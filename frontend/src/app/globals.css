@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root{
+  --stroke: #9F9FBF;
+  --accent: #7878A9;
+}
+
+@theme inline {
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: #222227;
+  color: #E6E6F0;
+  font-family: var(--font-ibm-plex-mono), monospace;
+}
+
+.frame { border: 1px solid var(--stroke); border-radius: 4px; }
+.button { border: 1px solid var(--stroke); padding: 8px 12px; border-radius: 4px; background: transparent; color: #E6E6F0; }
+.button:hover { border-color: var(--accent); color: #fff; }
+.input { background:#2B2B31; border: 1px solid var(--stroke); color:#E6E6F0; padding:8px 10px; border-radius:4px; }
+.kbd { border:1px solid var(--stroke); padding:2px 6px; border-radius:4px; }

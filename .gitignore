@@ -1,0 +1,106 @@
+# ---------------------------
+# OS & Editor junk
+# ---------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+*.sublime-workspace
+*.sublime-project
+.vscode/
+.idea/
+
+# ---------------------------
+# Python (server/)
+# ---------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.Python
+.venv/
+venv/
+.env
+.env.*.local
+.mypy_cache/
+.pytest_cache/
+coverage.xml
+htmlcov/
+.tox/
+.dmypy.json
+.pyre/
+.pytype/
+.ipynb_checkpoints
+
+# ---------------------------
+# Node / Next.js (web/)
+# ---------------------------
+node_modules/
+.npm/
+.pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+.nextjs/
+.next-static/
+*.tsbuildinfo
+# local envs
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ---------------------------
+# Frontend (scoped merges)
+# ---------------------------
+# Keep semantics of frontend/.gitignore without over-broad global rules
+frontend/.pnp
+frontend/.pnp.*
+frontend/.yarn/*
+!frontend/.yarn/patches
+!frontend/.yarn/plugins
+!frontend/.yarn/releases
+!frontend/.yarn/versions
+frontend/.env*
+frontend/coverage
+frontend/build
+frontend/.vercel
+frontend/next-env.d.ts
+
+# ---------------------------
+# Docker / Containers
+# ---------------------------
+*.pid
+*.seed
+docker-data/
+docker-volume/
+
+# ---------------------------
+# Misc
+# ---------------------------
+*.tar.gz
+*.zip
+*.tgz
+*.pem
+
+# ignore generated coverage + test outputs
+coverage/
+junit.xml
+reports/
+
+# ---------------------------
+# Local debug overrides
+# ---------------------------
+/debug/

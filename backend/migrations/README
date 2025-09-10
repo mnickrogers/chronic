@@ -1,0 +1,4 @@
+Alembic migrations for Chronic.
+
+Use `alembic -c backend/alembic.ini upgrade head` to apply migrations.
+Use `alembic -c backend/alembic.ini revision --autogenerate -m "message"` to create new ones.

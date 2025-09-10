@@ -1,0 +1,111 @@
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from typing import Optional, List
+from datetime import datetime, date
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    email: EmailStr
+    display_name: str
+    created_at: datetime
+
+
+class AuthSignupIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+    display_name: str
+
+
+class AuthLoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class OrganizationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    primary_domain: Optional[str]
+    created_at: datetime
+
+
+class WorkspaceCreateIn(BaseModel):
+    name: str
+
+
+class WorkspaceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    org_id: str
+    created_at: datetime
+
+
+class ProjectCreateIn(BaseModel):
+    name: str
+    visibility: str = "private"
+
+
+class ProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    visibility: str
+    workspace_id: str
+    org_id: str
+    created_at: datetime
+
+
+class ProjectStatusOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    key: str
+    label: str
+    position: int
+    is_done: bool
+
+
+class TaskCreateIn(BaseModel):
+    name: str
+    status_id: Optional[str] = None
+    priority: int = 2
+    due_date: Optional[date] = None
+
+
+class TaskUpdateIn(BaseModel):
+    name: Optional[str] = None
+    status_id: Optional[str] = None
+    priority: Optional[int] = None
+    is_completed: Optional[bool] = None
+    due_date: Optional[date] = None
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    project_id: str
+    status_id: Optional[str]
+    priority: int
+    is_completed: bool
+    due_date: Optional[date]
+    created_at: datetime
+
+
+class CommentCreateIn(BaseModel):
+    body: dict
+
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    task_id: str
+    author_id: str
+    body: dict
+    created_at: datetime
+
+
+class SessionOut(BaseModel):
+    user: UserOut
+    org: OrganizationOut
