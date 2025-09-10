@@ -146,11 +146,15 @@ Entities: Organization, OrgDomain, User, OrgMembership, Workspace, WorkspaceMemb
 
 The design takes from a retro terminal feel with dark colors and light borders around content.
 
+The design color theme should be modular. We'll come back and add selectable color themes later, so the initial colors outlined below are just the default (a start).
+
+We also provide design mocks for all the major screens. These can be used to infer the intended design language for the rest of the screens that we have not explicitly mocked yet.
+
 ### Colors
 - Primary background color: #222227
 - Secondary background color: #2B2B31
-- Stroke color: #9F9FBF
-- Highlight (accent) color: #7878A9
+- Stroke color (accent): #9F9FBF
+- Highlight color: #7878A9
 
 ### Fonts
 The main font is IBM Plex Mono, a monospaced font.
@@ -168,4 +172,11 @@ Then we can use the font in CSS:
 ```CSS
 font-family: "IBM Plex Mono", monospace;
 ```
+
+### Mocks
+
+- `chronic_main_tasks_view.png` - this file defines the UI for the main task landing page that displays all the tasks a user has created.
+- `chronic_single_task_view.png` - this image mocks the single task view that opens when a user clicks on a task or hits return with a task highlighted. The task pop-up displays over the existing view, with the background view slightly darkened. The top part of the task view displays task metadata and the task name, which can all be edited this way. The bottom part of the view is the free-form text edit field.
+- `chronic_projects_view.png` - this mock displays the projects page (selected via the left nav bar).
+- `chronic_projects_tasks_view.png` - this mock shows what a user sees when drilling into a specific project. The user can navigate back to the projects view by selecting the back arrow to the left of the project name. The task list here looks just like the standard list view that the "All Tasks" view displays.
 
