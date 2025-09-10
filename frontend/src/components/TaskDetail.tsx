@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, API_BASE } from "@/lib/api";
 import type { Task, Project, Status } from "./TaskList";
+import { DEFAULT_STATUSES } from "@/lib/default-statuses";
 
 export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
@@ -61,13 +62,20 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
             </select>
           </Meta>
           <Meta label="Status">
-            {task.project_id ? (
-              <select className="input w-full" value={task.status_id || ''} onChange={async (e)=>{ const updated = await api.updateTask(task.id, { status_id: e.target.value || null }); onChange?.(updated as any); }}>
-                {(statusesByProject?.[task.project_id]||[]).map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-            ) : (
-              <span className="opacity-70">[none]</span>
-            )}
+            <select
+              className="input w-full"
+              value={task.status_id || ''}
+              onChange={async (e)=>{
+                const val = e.target.value || null;
+                const updated = await api.updateTask(task.id, { status_id: val });
+                onChange?.(updated as any);
+              }}
+            >
+              <option value="">— No status —</option>
+              {(task.project_id ? (statusesByProject?.[task.project_id] || []) : DEFAULT_STATUSES as any).map((s: any) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
           </Meta>
         </div>
         <div className="p-0">

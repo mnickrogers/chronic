@@ -79,7 +79,7 @@ def create_workspace_task(
         workspace_id=workspace_id,
         project_id=prj.id if prj else None,
         name=data.name,
-        status_id=data.status_id if prj else None,
+        status_id=data.status_id,
         priority=data.priority,
         due_date=data.due_date,
         created_by=user.id,

@@ -4,6 +4,7 @@ import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Project, Status } from "@/components/TaskList";
 import TaskDetail from "@/components/TaskDetail";
 import { api } from "@/lib/api";
+import { DEFAULT_STATUSES } from "@/lib/default-statuses";
 
 export default function AllTasksPage() {
   return (
@@ -36,6 +37,8 @@ function AllTasksInner() {
         const flat: Record<string, Status> = {};
         const byProject: Record<string, Status[]> = {};
         statusGroups.forEach(({id, statuses}) => { byProject[id] = statuses as any; (statuses as any).forEach((s:any)=>{ flat[s.id] = s; }); });
+        // Also include default statuses so tasks without a project always have options
+        for (const s of DEFAULT_STATUSES) flat[s.id] = s as any;
         setStatuses(flat);
         setStatusesByProject(byProject);
       } catch {}
@@ -51,7 +54,7 @@ function AllTasksInner() {
 
   const createNew = async () => {
     if (!workspaceId) return;
-    const t = await api.createWorkspaceTask(workspaceId, 'Untitled Task');
+    const t = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, DEFAULT_STATUSES[0].id);
     setTasks(prev=>[t as any, ...prev]);
     setOpenTask(t as any);
   };

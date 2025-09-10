@@ -142,11 +142,11 @@ class Task(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid4_str)
     org_id: Mapped[str] = mapped_column(String)
     workspace_id: Mapped[str] = mapped_column(String)
-    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    project_id: Mapped[Optional[str]] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     parent_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     name: Mapped[str] = mapped_column(String(512))
     description: Mapped[Optional[dict]] = mapped_column(JSON, default=None)
-    status_id: Mapped[Optional[str]] = mapped_column(ForeignKey("project_statuses.id", ondelete="SET NULL"))
+    status_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     priority: Mapped[int] = mapped_column(Integer, default=2)  # 0..3
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
