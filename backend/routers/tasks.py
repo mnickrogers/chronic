@@ -4,7 +4,7 @@ from sqlalchemy import select
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Task, Project, ProjectStatus
+from ..models import Task, Project, ProjectStatus, Workspace
 from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut
 from ..realtime import manager
 
@@ -53,6 +53,49 @@ def create_task(
     return task
 
 
+@router.get("/workspace/{workspace_id}", response_model=list[TaskOut])
+def list_workspace_tasks(workspace_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    items = db.execute(select(Task).where(Task.workspace_id == workspace_id).order_by(Task.created_at.desc())).scalars().all()
+    return items
+
+
+@router.post("/workspace/{workspace_id}", response_model=TaskOut)
+def create_workspace_task(
+    workspace_id: str,
+    data: TaskCreateIn,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+    org=Depends(get_current_org),
+):
+    ws = db.get(Workspace, workspace_id)
+    if not ws or ws.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    prj = db.get(Project, data.project_id) if data.project_id else None
+    if prj and prj.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    task = Task(
+        id=None,
+        org_id=org.id,
+        workspace_id=workspace_id,
+        project_id=prj.id if prj else None,
+        name=data.name,
+        status_id=data.status_id if prj else None,
+        priority=data.priority,
+        due_date=data.due_date,
+        created_by=user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    try:
+        import anyio
+        if task.project_id:
+            anyio.from_thread.run(manager.broadcast, f"project:{task.project_id}", {"type": "task.created", "task": TaskOut.model_validate(task).model_dump()})
+    except Exception:
+        pass
+    return task
+
+
 @router.patch("/{task_id}", response_model=TaskOut)
 def update_task(
     task_id: str,
@@ -92,6 +135,8 @@ def update_task(
         task.completed_at = datetime.utcnow() if data.is_completed else None
     if data.due_date is not None:
         task.due_date = data.due_date
+    if data.description is not None:
+        task.description = data.description
     db.commit()
     db.refresh(task)
     # Broadcast

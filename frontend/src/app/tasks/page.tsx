@@ -18,6 +18,7 @@ function AllTasksInner() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
+  const [statusesByProject, setStatusesByProject] = useState<Record<string, Status[]>>({});
   const [openTask, setOpenTask] = useState<Task | null>(null);
 
   // Load projects and all tasks in the current workspace
@@ -27,14 +28,16 @@ function AllTasksInner() {
       try {
         const prjs = await api.listProjects(workspaceId);
         setProjects(prjs);
-        // Load tasks for each project
-        const taskGroups = await Promise.all(prjs.map((p:any) => api.listTasks(p.id)));
-        setTasks(taskGroups.flat());
-        // Load statuses for each project and flatten
-        const statusGroups = await Promise.all(prjs.map((p:any) => api.getStatuses(p.id)));
-        const map: Record<string, Status> = {};
-        statusGroups.flat().forEach((s:any)=>{ map[s.id] = s; });
-        setStatuses(map);
+        // All tasks in workspace, including those with no project
+        const all = await api.listWorkspaceTasks(workspaceId);
+        setTasks(all as any);
+        // Load statuses for each project and keep both flattened and by-project
+        const statusGroups = await Promise.all(prjs.map(async (p:any) => ({ id: p.id, statuses: await api.getStatuses(p.id) })));
+        const flat: Record<string, Status> = {};
+        const byProject: Record<string, Status[]> = {};
+        statusGroups.forEach(({id, statuses}) => { byProject[id] = statuses as any; (statuses as any).forEach((s:any)=>{ flat[s.id] = s; }); });
+        setStatuses(flat);
+        setStatusesByProject(byProject);
       } catch {}
     })();
   }, [workspaceId]);
@@ -47,9 +50,8 @@ function AllTasksInner() {
   };
 
   const createNew = async () => {
-    if (projects.length === 0) return; // no project to attach to
-    const p = projects[0];
-    const t = await api.createTask(p.id, 'Untitled Task');
+    if (!workspaceId) return;
+    const t = await api.createWorkspaceTask(workspaceId, 'Untitled Task');
     setTasks(prev=>[t as any, ...prev]);
     setOpenTask(t as any);
   };
@@ -58,7 +60,7 @@ function AllTasksInner() {
     <div>
       <div className="mb-3 flex items-center justify-between">
         <div className="text-md">All Tasks</div>
-        <button className={`button w-8 h-8 p-0 flex items-center justify-center ${projects.length===0? 'opacity-50 cursor-not-allowed':''}`} onClick={createNew} title="New task" disabled={projects.length===0}>+</button>
+        <button className={`button w-8 h-8 p-0 flex items-center justify-center`} onClick={createNew} title="New task">+</button>
       </div>
       <TaskList
         tasks={tasks}
@@ -70,12 +72,13 @@ function AllTasksInner() {
       {openTask && (
         <TaskDetail
           task={openTask}
-          project={projectsById[openTask.project_id]}
+          project={projectsById[openTask.project_id || '']}
           status={openTask.status_id ? statuses[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
           projects={projects as any}
           statusesById={statuses}
+          statusesByProject={statusesByProject}
         />
       )}
     </div>

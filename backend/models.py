@@ -103,7 +103,7 @@ class ProjectMembership(Base):
     __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_proj_user"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid4_str)
-    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    project_id: Mapped[Optional[str]] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(String(16), default="editor")  # editor/viewer
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

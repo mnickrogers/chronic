@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { api, API_BASE } from "@/lib/api";
 import type { Task, Project, Status } from "./TaskList";
 
-export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status> }){
+export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
   const [comment, setComment] = useState('');
+  const [desc, setDesc] = useState<string>(typeof (task as any).description?.text === 'string' ? (task as any).description.text : '');
 
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
   useEffect(() => { (async () => { try { const res = await fetch(`${API_BASE}/comments/task/${task.id}`, { credentials: 'include' }); if(res.ok) setComments(await res.json()); } catch {} })(); }, [task.id]);
@@ -19,12 +20,20 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
     } catch {}
   };
 
-  const moveProject = async (projectId: string) => {
+  const moveProject = async (projectId: string | null) => {
     try {
       const updated = await api.updateTask(task.id, { project_id: projectId });
       onChange?.(updated as any);
     } catch {}
   };
+
+  const saveDescription = async () => {
+    try {
+      const body = { description: { type: 'plain', text: desc } };
+      const updated = await api.updateTask(task.id, body);
+      onChange?.(updated as any);
+    } catch {}
+  }
 
   const addComment = async () => {
     if (!comment.trim()) return;
@@ -46,27 +55,31 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
             <input type="date" className="input w-full" value={due} onChange={e=>setDue(e.target.value)} onBlur={saveMeta} />
           </Meta>
           <Meta label="Project">
-            {projects && projects.length > 0 ? (
-              <select className="input w-full" value={task.project_id} onChange={(e)=>moveProject(e.target.value)}>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            ) : (project?.name || '[none]')}
+            <select className="input w-full" value={task.project_id || ''} onChange={(e)=>moveProject(e.target.value || null as any)}>
+              <option value="">[none]</option>
+              {(projects||[]).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </Meta>
-          <Meta label="Status">{(statusesById && task.status_id && statusesById[task.status_id]?.label) || status?.label || '[none]'}</Meta>
+          <Meta label="Status">
+            {task.project_id ? (
+              <select className="input w-full" value={task.status_id || ''} onChange={async (e)=>{ const updated = await api.updateTask(task.id, { status_id: e.target.value || null }); onChange?.(updated as any); }}>
+                {(statusesByProject?.[task.project_id]||[]).map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            ) : (
+              <span className="opacity-70">[none]</span>
+            )}
+          </Meta>
         </div>
-        <div className="p-4 max-h-[50vh] overflow-y-auto">
-          <div className="text-sm opacity-80 mb-2">Notes</div>
-          <div className="space-y-2">
-            {comments.map((c:any)=> (
-              <div key={c.id} className="frame bg-[#222227] p-2 text-sm">
-                {typeof c.body?.text === 'string' ? c.body.text : JSON.stringify(c.body)}
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex gap-2">
-            <input className="input flex-1" placeholder="Add a note…" value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') addComment(); }} />
-            <button className="button" onClick={addComment}>Add</button>
-          </div>
+        <div className="p-0">
+          <div className="border-t border-[var(--stroke)]"></div>
+          <textarea
+            className="w-full min-h-[40vh] bg-[#2B2B31] p-4 outline-none"
+            placeholder="Write a description…"
+            value={desc}
+            onChange={e=>setDesc(e.target.value)}
+            onBlur={saveDescription}
+            onKeyDown={(e)=>{ if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='enter'){ e.preventDefault(); saveDescription(); } }}
+          />
         </div>
       </div>
     </div>

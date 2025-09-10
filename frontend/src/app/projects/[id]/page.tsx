@@ -97,6 +97,7 @@ function ProjectTasksInner() {
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
           projects={project? [project] : []}
           statusesById={statusesById}
+          statusesByProject={project? { [project.id]: statuses } : {} as any}
         />
       )}
     </div>

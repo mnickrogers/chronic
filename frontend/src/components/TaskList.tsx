@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 export type Task = {
   id: string;
   name: string;
-  project_id: string;
+  project_id: string | null;
   status_id?: string | null;
   priority: number;
   is_completed: boolean;
@@ -49,7 +49,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, onTo
               <TaskRow
                 key={t.id}
                 task={t}
-                project={projectsById[t.project_id]}
+                project={projectsById[t.project_id || '']}
                 status={t.status_id ? statusesById[t.status_id] : undefined}
                 onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
                 onOpen={()=>onOpen?.(t)}
