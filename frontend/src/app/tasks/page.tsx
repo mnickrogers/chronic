@@ -60,7 +60,14 @@ function AllTasksInner() {
     <div>
       <div className="mb-3 flex items-center justify-between">
         <div className="text-md">All Tasks</div>
-        <button className={`button w-8 h-8 p-0 flex items-center justify-center`} onClick={createNew} title="New task">+</button>
+        <button
+          className={`button w-8 h-8 p-0 flex items-center justify-center ${!workspaceId ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={() => { if (workspaceId) createNew(); }}
+          title={workspaceId ? "New task" : "Preparing workspace…"}
+          disabled={!workspaceId}
+        >
+          +
+        </button>
       </div>
       <TaskList
         tasks={tasks}
@@ -68,6 +75,8 @@ function AllTasksInner() {
         statusesById={statuses}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
+        onNew={createNew}
+        newDisabled={!workspaceId}
       />
       {openTask && (
         <TaskDetail

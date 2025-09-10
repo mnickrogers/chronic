@@ -12,17 +12,38 @@ import { api } from "@/lib/api";
  */
 export function useCurrentWorkspace() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  // Coordinate concurrent hook callers so we don't create duplicate workspaces
+  // across different components mounting at the same time.
+  // Module-scope variable persists per bundle instance.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyGlobal = globalThis as any;
+  if (!anyGlobal.__wsInitPromise) anyGlobal.__wsInitPromise = null as Promise<string | null> | null;
   useEffect(() => {
     const cached = typeof window !== 'undefined' ? localStorage.getItem('currentWorkspaceId') : null;
     if (cached) { setWorkspaceId(cached); return; }
     (async () => {
       try {
-        const wss = await api.listWorkspaces();
-        const id = wss?.[0]?.id || null;
-        if (id) {
-          localStorage.setItem('currentWorkspaceId', id);
-          setWorkspaceId(id);
+        // If another caller is already initializing, reuse that promise
+        if (anyGlobal.__wsInitPromise) {
+          const idFromOther = await anyGlobal.__wsInitPromise;
+          if (idFromOther) { localStorage.setItem('currentWorkspaceId', idFromOther); setWorkspaceId(idFromOther); }
+          return;
         }
+
+        anyGlobal.__wsInitPromise = (async () => {
+          const wss = await api.listWorkspaces();
+          let id = wss?.[0]?.id || null;
+          if (!id) {
+            // Auto-provision a default workspace for first-run UX
+            const created = await api.createWorkspace('My Workspace');
+            id = (created as any).id || null;
+          }
+          return id;
+        })();
+
+        const id = await anyGlobal.__wsInitPromise;
+        anyGlobal.__wsInitPromise = null;
+        if (id) { localStorage.setItem('currentWorkspaceId', id); setWorkspaceId(id); }
       } catch {}
     })();
   }, []);
@@ -70,4 +91,3 @@ function NavLink({ href, label, active }: { href: string; label: string; active?
     </Link>
   );
 }
-
