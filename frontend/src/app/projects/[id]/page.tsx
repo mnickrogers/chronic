@@ -57,11 +57,20 @@ function ProjectTasksInner() {
     setTasks(prev=>prev.map(x=>x.id===t.id? (updated as any): x));
   };
 
+  const createNew = async () => {
+    const t = await api.createTask(id, 'Untitled Task', statuses?.[0]?.id);
+    setTasks(prev=>[t as any, ...prev]);
+    setOpenTask(t as any);
+  };
+
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <Link href="/projects" className="button">←</Link>
-        <div className="text-md">{project?.name || 'Project'}</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Link href="/projects" className="button">←</Link>
+          <div className="text-md">{project?.name || 'Project'}</div>
+        </div>
+        <button className="button w-8 h-8 p-0 flex items-center justify-center" onClick={createNew} title="New task">+</button>
       </div>
 
       <div className="frame p-3 bg-[#2B2B31] mb-3">
@@ -86,6 +95,8 @@ function ProjectTasksInner() {
           status={openTask.status_id ? statusesById[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          projects={project? [project] : []}
+          statusesById={statusesById}
         />
       )}
     </div>

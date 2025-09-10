@@ -79,6 +79,7 @@ class TaskUpdateIn(BaseModel):
     priority: Optional[int] = None
     is_completed: Optional[bool] = None
     due_date: Optional[date] = None
+    project_id: Optional[str] = None
 
 
 class TaskOut(BaseModel):

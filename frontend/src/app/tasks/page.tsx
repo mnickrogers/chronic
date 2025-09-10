@@ -46,9 +46,20 @@ function AllTasksInner() {
     setTasks(prev=>prev.map(x=>x.id===t.id? (updated as any): x));
   };
 
+  const createNew = async () => {
+    if (projects.length === 0) return; // no project to attach to
+    const p = projects[0];
+    const t = await api.createTask(p.id, 'Untitled Task');
+    setTasks(prev=>[t as any, ...prev]);
+    setOpenTask(t as any);
+  };
+
   return (
     <div>
-      <div className="mb-3 text-md">All Tasks</div>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-md">All Tasks</div>
+        <button className={`button w-8 h-8 p-0 flex items-center justify-center ${projects.length===0? 'opacity-50 cursor-not-allowed':''}`} onClick={createNew} title="New task" disabled={projects.length===0}>+</button>
+      </div>
       <TaskList
         tasks={tasks}
         projectsById={projectsById}
@@ -63,9 +74,10 @@ function AllTasksInner() {
           status={openTask.status_id ? statuses[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          projects={projects as any}
+          statusesById={statuses}
         />
       )}
     </div>
   );
 }
-

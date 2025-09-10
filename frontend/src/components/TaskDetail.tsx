@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api, API_BASE } from "@/lib/api";
 import type { Task, Project, Status } from "./TaskList";
 
-export default function TaskDetail({ task, project, status, onClose, onChange }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void }){
+export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
@@ -15,6 +15,13 @@ export default function TaskDetail({ task, project, status, onClose, onChange }:
   const saveMeta = async () => {
     try {
       const updated = await api.updateTask(task.id, { name: title, due_date: due || null });
+      onChange?.(updated as any);
+    } catch {}
+  };
+
+  const moveProject = async (projectId: string) => {
+    try {
+      const updated = await api.updateTask(task.id, { project_id: projectId });
       onChange?.(updated as any);
     } catch {}
   };
@@ -38,8 +45,14 @@ export default function TaskDetail({ task, project, status, onClose, onChange }:
           <Meta label="Due">
             <input type="date" className="input w-full" value={due} onChange={e=>setDue(e.target.value)} onBlur={saveMeta} />
           </Meta>
-          <Meta label="Project">{project?.name || '[none]'}</Meta>
-          <Meta label="Status">{status?.label || '[none]'}</Meta>
+          <Meta label="Project">
+            {projects && projects.length > 0 ? (
+              <select className="input w-full" value={task.project_id} onChange={(e)=>moveProject(e.target.value)}>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : (project?.name || '[none]')}
+          </Meta>
+          <Meta label="Status">{(statusesById && task.status_id && statusesById[task.status_id]?.label) || status?.label || '[none]'}</Meta>
         </div>
         <div className="p-4 max-h-[50vh] overflow-y-auto">
           <div className="text-sm opacity-80 mb-2">Notes</div>

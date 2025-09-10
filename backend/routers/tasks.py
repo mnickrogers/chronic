@@ -4,7 +4,7 @@ from sqlalchemy import select
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Task, Project
+from ..models import Task, Project, ProjectStatus
 from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut
 from ..realtime import manager
 
@@ -64,6 +64,23 @@ def update_task(
     task = db.get(Task, task_id)
     if not task or task.org_id != org.id:
         raise HTTPException(status_code=404, detail="Task not found")
+    old_project_id = task.project_id
+    # Handle project move
+    if data.project_id is not None and data.project_id != task.project_id:
+        new_prj = db.get(Project, data.project_id)
+        if not new_prj or new_prj.org_id != org.id:
+            raise HTTPException(status_code=404, detail="Project not found")
+        task.project_id = new_prj.id
+        task.workspace_id = new_prj.workspace_id
+        # Ensure status is valid in target project
+        target_statuses = db.execute(select(ProjectStatus).where(ProjectStatus.project_id == new_prj.id).order_by(ProjectStatus.position)).scalars().all()
+        target_ids = {s.id for s in target_statuses}
+        if data.status_id is not None and data.status_id in target_ids:
+            task.status_id = data.status_id
+        elif task.status_id not in target_ids:
+            # default to first status if current status invalid for new project
+            if target_statuses:
+                task.status_id = target_statuses[0].id
     if data.name is not None:
         task.name = data.name
     if data.status_id is not None:
@@ -80,8 +97,13 @@ def update_task(
     # Broadcast
     try:
         import anyio
-        payload = {"type": "task.updated", "task": TaskOut.model_validate(task).model_dump()}
-        anyio.from_thread.run(manager.broadcast, f"project:{task.project_id}", payload)
+        # If moved, notify old project as deletion and new as creation for simpler client handling
+        if data.project_id is not None and data.project_id != old_project_id:
+            anyio.from_thread.run(manager.broadcast, f"project:{old_project_id}", {"type": "task.deleted", "id": task_id})
+            anyio.from_thread.run(manager.broadcast, f"project:{task.project_id}", {"type": "task.created", "task": TaskOut.model_validate(task).model_dump()})
+        else:
+            payload = {"type": "task.updated", "task": TaskOut.model_validate(task).model_dump()}
+            anyio.from_thread.run(manager.broadcast, f"project:{task.project_id}", payload)
     except Exception:
         pass
     return task
@@ -101,4 +123,3 @@ def delete_task(task_id: str, db: Session = Depends(get_db), org=Depends(get_cur
     except Exception:
         pass
     return {"ok": True}
-
