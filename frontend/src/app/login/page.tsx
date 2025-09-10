@@ -17,10 +17,16 @@ export default function LoginPage() {
     e.preventDefault();
     setErr(null);
     try {
-      if (mode === 'login') await api.login(email, password);
-      else await api.signup(email, password, name || email.split('@')[0]);
-      await refresh();
-      router.replace('/');
+      if (mode === 'login') {
+        await api.login(email, password);
+        await refresh();
+        router.replace('/');
+      } else {
+        await api.signup(email, password, name || email.split('@')[0]);
+        await refresh();
+        // After signup, collect workspace name before entering the app
+        router.replace('/welcome');
+      }
     } catch (e: any) {
       setErr(e.message || 'Failed');
     }
@@ -59,4 +65,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -24,7 +24,8 @@ export const api = {
   getStatuses: (projectId: string) => request(`/projects/${projectId}/statuses`),
   listTasks: (projectId: string) => request(`/tasks/project/${projectId}`),
   createTask: (projectId: string, name: string, status_id?: string) => request(`/tasks/project/${projectId}`, { method: 'POST', body: { name, status_id } }),
+  listWorkspaceTasks: (workspaceId: string) => request(`/tasks/workspace/${workspaceId}`),
+  createWorkspaceTask: (workspaceId: string, name: string, project_id?: string | null, status_id?: string | null) => request(`/tasks/workspace/${workspaceId}`, { method: 'POST', body: { name, project_id, status_id } }),
   updateTask: (taskId: string, body: any) => request(`/tasks/${taskId}`, { method: 'PATCH', body }),
   deleteTask: (taskId: string) => request(`/tasks/${taskId}`, { method: 'DELETE' }),
 };
-

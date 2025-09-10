@@ -71,6 +71,8 @@ class TaskCreateIn(BaseModel):
     status_id: Optional[str] = None
     priority: int = 2
     due_date: Optional[date] = None
+    project_id: Optional[str] = None
+    workspace_id: Optional[str] = None
 
 
 class TaskUpdateIn(BaseModel):
@@ -79,18 +81,21 @@ class TaskUpdateIn(BaseModel):
     priority: Optional[int] = None
     is_completed: Optional[bool] = None
     due_date: Optional[date] = None
+    project_id: Optional[str] = None
+    description: Optional[dict] = None
 
 
 class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     name: str
-    project_id: str
+    project_id: Optional[str]
     status_id: Optional[str]
     priority: int
     is_completed: bool
     due_date: Optional[date]
     created_at: datetime
+    description: Optional[dict]
 
 
 class CommentCreateIn(BaseModel):
