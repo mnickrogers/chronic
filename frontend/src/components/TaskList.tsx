@@ -32,15 +32,6 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
   const sections = ["Today", "This Week", "This Month", "Later", "No Date"] as const;
   return (
     <div className="frame bg-[#2B2B31] relative">
-      {onNew && (
-        <button
-          title="New task"
-          className={`button absolute right-2 top-2 w-8 h-8 p-0 flex items-center justify-center ${newDisabled? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={() => { if(!newDisabled) onNew(); }}
-        >
-          +
-        </button>
-      )}
       {sections.map((sec, idx) => (
         <div key={sec} className={idx>0?"border-t border-[#3A3A45]":undefined}>
           <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45]">{sec}</div>
