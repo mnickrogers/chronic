@@ -96,6 +96,7 @@ function AllTasksInner() {
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
           onAssigneesChanged={(taskId, users)=> setAssigneesByTask(prev=>({ ...prev, [taskId]: users }))}
+          onDelete={(id)=>{ setTasks(prev => prev.filter(t => t.id !== id)); setAssigneesByTask(prev=>{ const { [id]:_, ...rest } = prev; return rest; }); setOpenTask(null); }}
           projects={projects as any}
           statusesById={statuses}
           statusesByProject={statusesByProject}
