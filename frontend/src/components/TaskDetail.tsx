@@ -7,7 +7,7 @@ import UserPicker from "@/components/UserPicker";
 import UserBadge from "@/components/UserBadge";
 import { useCurrentWorkspace } from "@/components/AppShell";
 
-export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
+export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, onDelete, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, onDelete?: (taskId: string) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
@@ -15,6 +15,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
   const [desc, setDesc] = useState<string>(typeof (task as any).description?.text === 'string' ? (task as any).description.text : '');
   const [assignees, setAssignees] = useState<any[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { workspaceId } = useCurrentWorkspace();
 
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
@@ -53,9 +54,38 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-20" onClick={onClose}>
-      <div className="frame bg-[#2B2B31] w-full max-w-3xl" onClick={(e)=>e.stopPropagation()}>
-        <div className="p-4 border-b border-[#3A3A45]">
-          <input className="bg-transparent outline-none w-full text-xl" value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveMeta} />
+      <div className="frame bg-[#2B2B31] w-full max-w-3xl" onClick={(e)=>{ e.stopPropagation(); if(menuOpen) setMenuOpen(false); }}>
+        <div className="p-4 border-b border-[#3A3A45] flex items-center gap-2">
+          <input className="bg-transparent outline-none text-xl flex-1" value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveMeta} />
+          <div className="relative">
+            <button
+              className="button w-8 h-8 p-0 flex items-center justify-center"
+              onClick={(e)=>{ e.stopPropagation(); setMenuOpen(v=>!v); }}
+              title="More options"
+            >
+              ...
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-1 z-10 w-44 border border-[var(--stroke)] bg-[#2B2B31] rounded-sm shadow">
+                <button
+                  className="w-full text-left px-3 py-2 hover:bg-[#222227] text-red-400"
+                  onClick={async (e)=>{
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    try {
+                      if (confirm('Delete this task?')) {
+                        await api.deleteTask(task.id);
+                        onDelete?.(task.id);
+                        onClose();
+                      }
+                    } catch {}
+                  }}
+                >
+                  Delete Task
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="p-4 border-b border-[#3A3A45] grid grid-cols-2 gap-4 text-sm">
           <Meta label="Assigned to">
