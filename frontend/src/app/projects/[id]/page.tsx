@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Status } from "@/components/TaskList";
 import TaskDetail from "@/components/TaskDetail";
@@ -19,11 +19,13 @@ export default function ProjectTasksPage() {
 
 function ProjectTasksInner() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [project, setProject] = useState<any | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { workspaceId } = useCurrentWorkspace();
   const [assigneesByTask, setAssigneesByTask] = useState<Record<string, any[]>>({});
   const [newTask, setNewTask] = useState('');
@@ -45,6 +47,7 @@ function ProjectTasksInner() {
       if (msg.type === 'task.created') { setTasks(prev => [msg.task, ...prev]); setAssigneesByTask(prev=>({ ...prev, [msg.task.id]: [] })); }
       if (msg.type === 'task.updated') setTasks(prev => prev.map(t => t.id === msg.task.id ? msg.task : t));
       if (msg.type === 'task.deleted') { setTasks(prev => prev.filter(t => t.id !== msg.id)); setAssigneesByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); }
+      if (msg.type === 'project.deleted') { try { router.push('/projects'); } catch {} }
     };
     return () => { try { ws.close(); } catch {} };
   }, [id]);
@@ -73,12 +76,39 @@ function ProjectTasksInner() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3" onClick={()=>{ if(menuOpen) setMenuOpen(false); }}>
         <div className="flex items-center gap-2">
           <Link href="/projects" className="button">←</Link>
           <div className="text-md">{project?.name || 'Project'}</div>
         </div>
-        <button className="button w-8 h-8 p-0 flex items-center justify-center" onClick={createNew} title="New task">+</button>
+        <div className="relative flex items-center gap-2" onClick={(e)=>e.stopPropagation()}>
+          <button className="button w-8 h-8 p-0 flex items-center justify-center" onClick={createNew} title="New task">+</button>
+          <button
+            className="button w-8 h-8 p-0 flex items-center justify-center"
+            title="More options"
+            onClick={()=>setMenuOpen(v=>!v)}
+          >
+            ...
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 z-10 w-44 border border-[var(--stroke)] bg-[#2B2B31] rounded-sm shadow">
+              <button
+                className="w-full text-left px-3 py-2 hover:bg-[#222227] text-red-400"
+                onClick={async()=>{
+                  setMenuOpen(false);
+                  try {
+                    if (confirm('Delete this project and all its tasks?')) {
+                      await api.deleteProject(id);
+                      router.push('/projects');
+                    }
+                  } catch {}
+                }}
+              >
+                Delete Project
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="frame p-3 bg-[#2B2B31] mb-3">
