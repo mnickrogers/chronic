@@ -116,3 +116,24 @@ def remove_project_member(project_id: str, user_id: str, db: Session = Depends(g
     db.delete(mem)
     db.commit()
     return {"ok": True}
+
+
+@router.delete("/{project_id}")
+def delete_project(project_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    prj = db.get(Project, project_id)
+    if not prj or prj.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    workspace_id = prj.workspace_id
+    db.delete(prj)
+    db.commit()
+    # Notify interested clients
+    try:
+        import anyio
+        payload = {"type": "project.deleted", "id": project_id}
+        # Broadcast to the workspace channel so lists can update
+        anyio.from_thread.run(manager.broadcast, f"workspace:{workspace_id}", payload)
+        # Broadcast to the project channel so open views can react
+        anyio.from_thread.run(manager.broadcast, f"project:{project_id}", payload)
+    except Exception:
+        pass
+    return {"ok": True}

@@ -21,6 +21,7 @@ export const api = {
   createWorkspace: (name: string) => request('/orgs/current/workspaces', { method: 'POST', body: { name } }),
   listProjects: (workspaceId: string) => request(`/projects/workspace/${workspaceId}`),
   createProject: (workspaceId: string, name: string, visibility: string='private') => request(`/projects/workspace/${workspaceId}`, { method: 'POST', body: { name, visibility } }),
+  deleteProject: (projectId: string) => request(`/projects/${projectId}`, { method: 'DELETE' }),
   getStatuses: (projectId: string) => request(`/projects/${projectId}/statuses`),
   listTasks: (projectId: string) => request(`/tasks/project/${projectId}`),
   createTask: (projectId: string, name: string, status_id?: string) => request(`/tasks/project/${projectId}`, { method: 'POST', body: { name, status_id } }),
