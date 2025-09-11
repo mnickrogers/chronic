@@ -28,4 +28,16 @@ export const api = {
   createWorkspaceTask: (workspaceId: string, name: string, project_id?: string | null, status_id?: string | null) => request(`/tasks/workspace/${workspaceId}`, { method: 'POST', body: { name, project_id, status_id } }),
   updateTask: (taskId: string, body: any) => request(`/tasks/${taskId}`, { method: 'PATCH', body }),
   deleteTask: (taskId: string) => request(`/tasks/${taskId}`, { method: 'DELETE' }),
+  // Workspace members
+  listWorkspaceMembers: (workspaceId: string) => request(`/orgs/workspaces/${workspaceId}/members`),
+  addWorkspaceMember: (workspaceId: string, body: { user_id?: string, email?: string, display_name?: string }) => request(`/orgs/workspaces/${workspaceId}/members`, { method: 'POST', body }),
+  removeWorkspaceMember: (workspaceId: string, userId: string) => request(`/orgs/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' }),
+  // Project members
+  listProjectMembers: (projectId: string) => request(`/projects/${projectId}/members`),
+  addProjectMember: (projectId: string, user_id: string) => request(`/projects/${projectId}/members`, { method: 'POST', body: { user_id } }),
+  removeProjectMember: (projectId: string, userId: string) => request(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' }),
+  // Task assignees
+  listTaskAssignees: (taskId: string) => request(`/tasks/${taskId}/assignees`),
+  addTaskAssignee: (taskId: string, user_id: string) => request(`/tasks/${taskId}/assignees`, { method: 'POST', body: { user_id } }),
+  removeTaskAssignee: (taskId: string, userId: string) => request(`/tasks/${taskId}/assignees/${userId}`, { method: 'DELETE' }),
 };

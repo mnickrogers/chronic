@@ -4,8 +4,8 @@ from sqlalchemy import select
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Task, Project, ProjectStatus, Workspace
-from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut
+from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership
+from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut
 from ..realtime import manager
 
 
@@ -139,6 +139,19 @@ def update_task(
         task.description = data.description
     db.commit()
     db.refresh(task)
+    # If moved into a project, grant existing assignees access to the project and workspace
+    if data.project_id is not None and data.project_id != old_project_id and task.project_id:
+        assignees = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task.id)).scalars().all()
+        for a in assignees:
+            # Ensure workspace membership
+            ws_mem = db.execute(select(WorkspaceMembership).where(WorkspaceMembership.workspace_id == task.workspace_id, WorkspaceMembership.user_id == a.user_id)).scalar_one_or_none()
+            if not ws_mem:
+                db.add(WorkspaceMembership(workspace_id=task.workspace_id, user_id=a.user_id, role="member"))
+            # Ensure project membership
+            pm = db.execute(select(ProjectMembership).where(ProjectMembership.project_id == task.project_id, ProjectMembership.user_id == a.user_id)).scalar_one_or_none()
+            if not pm:
+                db.add(ProjectMembership(project_id=task.project_id, user_id=a.user_id, role="editor"))
+        db.commit()
     # Broadcast
     try:
         import anyio
@@ -167,4 +180,72 @@ def delete_task(task_id: str, db: Session = Depends(get_db), org=Depends(get_cur
         anyio.from_thread.run(manager.broadcast, f"project:{project_id}", {"type": "task.deleted", "id": task_id})
     except Exception:
         pass
+    return {"ok": True}
+
+
+@router.get("/{task_id}/assignees", response_model=list[UserOut])
+def list_task_assignees(task_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    assocs = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task_id)).scalars().all()
+    users: list[UserOut] = []
+    for a in assocs:
+        u = db.get(User, a.user_id)
+        if u:
+            users.append(UserOut.model_validate(u))
+    return users
+
+
+@router.post("/{task_id}/assignees", response_model=list[UserOut])
+def add_task_assignee(
+    task_id: str,
+    data: TaskAssigneeAddIn,
+    db: Session = Depends(get_db),
+    org=Depends(get_current_org),
+):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    user = db.get(User, data.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Ensure workspace membership so tasks show up for them
+    ws_mem = db.execute(select(WorkspaceMembership).where(WorkspaceMembership.workspace_id == task.workspace_id, WorkspaceMembership.user_id == user.id)).scalar_one_or_none()
+    if not ws_mem:
+        db.add(WorkspaceMembership(workspace_id=task.workspace_id, user_id=user.id, role="member"))
+
+    # Add assignee link if missing
+    existing = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task_id, TaskAssignee.user_id == user.id)).scalar_one_or_none()
+    if not existing:
+        db.add(TaskAssignee(task_id=task_id, user_id=user.id))
+
+    # If task is in a project, ensure project access
+    if task.project_id:
+        pm = db.execute(select(ProjectMembership).where(ProjectMembership.project_id == task.project_id, ProjectMembership.user_id == user.id)).scalar_one_or_none()
+        if not pm:
+            db.add(ProjectMembership(project_id=task.project_id, user_id=user.id, role="editor"))
+
+    db.commit()
+    # Return full list of assignees
+    assocs = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task_id)).scalars().all()
+    users: list[UserOut] = []
+    for a in assocs:
+        u = db.get(User, a.user_id)
+        if u:
+            users.append(UserOut.model_validate(u))
+    return users
+
+
+@router.delete("/{task_id}/assignees/{user_id}")
+def remove_task_assignee(task_id: str, user_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    assoc = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task_id, TaskAssignee.user_id == user_id)).scalar_one_or_none()
+    if not assoc:
+        raise HTTPException(status_code=404, detail="Assignee not found")
+    db.delete(assoc)
+    db.commit()
     return {"ok": True}
