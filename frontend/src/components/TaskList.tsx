@@ -62,7 +62,7 @@ function TaskRow({ task, project, status, assignees, onToggleCompleted, onOpen }
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
         {task.is_completed ? <div className="w-3 h-3 bg-[var(--stroke)]"/> : null}
       </div>
-      <div className="flex-1 text-sm">
+      <div className="flex-1 text-sm ml-4">
         <div className={`${task.is_completed? 'line-through opacity-60': ''}`}>{task.name}</div>
       </div>
       <div className="text-xs opacity-70 w-[110px] text-right tabular-nums">
