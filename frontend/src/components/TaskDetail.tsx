@@ -7,7 +7,7 @@ import UserPicker from "@/components/UserPicker";
 import UserBadge from "@/components/UserBadge";
 import { useCurrentWorkspace } from "@/components/AppShell";
 
-export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
+export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
@@ -19,7 +19,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
 
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
   useEffect(() => { (async () => { try { const res = await fetch(`${API_BASE}/comments/task/${task.id}`, { credentials: 'include' }); if(res.ok) setComments(await res.json()); } catch {} })(); }, [task.id]);
-  useEffect(() => { (async () => { try { const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); } catch {} })(); }, [task.id]);
+  useEffect(() => { (async () => { try { const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); onAssigneesChanged?.(task.id, users as any[]); } catch {} })(); }, [task.id]);
 
   const saveMeta = async () => {
     try {
@@ -67,7 +67,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
                   <span className="text-xs">{u.display_name}</span>
                   <button
                     className="text-xs opacity-70 hover:opacity-100"
-                    onClick={async (e)=>{ e.stopPropagation(); try{ await api.removeTaskAssignee(task.id, u.id); setAssignees(prev=>prev.filter(x=>x.id!==u.id)); }catch{} }}
+                    onClick={async (e)=>{ e.stopPropagation(); try{ await api.removeTaskAssignee(task.id, u.id); const next = assignees.filter(x=>x.id!==u.id); setAssignees(next); onAssigneesChanged?.(task.id, next); }catch{} }}
                     title="Remove"
                   >×</button>
                 </span>
@@ -79,7 +79,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
                     <UserPicker
                       workspaceId={workspaceId}
                       onSelect={async (user)=>{
-                        try { await api.addTaskAssignee(task.id, user.id); const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); } catch {}
+                        try { await api.addTaskAssignee(task.id, user.id); const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); onAssigneesChanged?.(task.id, users as any[]); } catch {}
                         setPickerOpen(false);
                       }}
                     />

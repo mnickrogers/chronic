@@ -25,11 +25,12 @@ function ProjectTasksInner() {
   const [members, setMembers] = useState<any[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { workspaceId } = useCurrentWorkspace();
+  const [assigneesByTask, setAssigneesByTask] = useState<Record<string, any[]>>({});
   const [newTask, setNewTask] = useState('');
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => { if (!id) return; api.listTasks(id).then(setTasks); api.getStatuses(id).then(setStatuses); }, [id]);
+  useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} })(); }, [id]);
   useEffect(() => { if (!id || !workspaceId) return; (async()=>{ try { const prjs = await api.listProjects(workspaceId); setProject(prjs.find((p:any)=>p.id===id) || null); } catch {} })(); }, [id, workspaceId]);
   useEffect(() => { if (!id) return; api.listProjectMembers(id).then((ms:any)=>setMembers(ms.map((m:any)=>m.user))).catch(()=>{}); }, [id]);
 
@@ -41,9 +42,9 @@ function ProjectTasksInner() {
     ws.onopen = () => ws.send(JSON.stringify({ subscribe: `project:${id}` }));
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
-      if (msg.type === 'task.created') setTasks(prev => [msg.task, ...prev]);
+      if (msg.type === 'task.created') { setTasks(prev => [msg.task, ...prev]); setAssigneesByTask(prev=>({ ...prev, [msg.task.id]: [] })); }
       if (msg.type === 'task.updated') setTasks(prev => prev.map(t => t.id === msg.task.id ? msg.task : t));
-      if (msg.type === 'task.deleted') setTasks(prev => prev.filter(t => t.id !== msg.id));
+      if (msg.type === 'task.deleted') { setTasks(prev => prev.filter(t => t.id !== msg.id)); setAssigneesByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); }
     };
     return () => { try { ws.close(); } catch {} };
   }, [id]);
@@ -54,6 +55,7 @@ function ProjectTasksInner() {
     if (!newTask) return;
     const t = await api.createTask(id, newTask, statuses?.[0]?.id);
     setTasks(prev=>[t as any, ...prev]);
+    setAssigneesByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setNewTask('');
   };
 
@@ -65,6 +67,7 @@ function ProjectTasksInner() {
   const createNew = async () => {
     const t = await api.createTask(id, 'Untitled Task', statuses?.[0]?.id);
     setTasks(prev=>[t as any, ...prev]);
+    setAssigneesByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setOpenTask(t as any);
   };
 
@@ -121,6 +124,7 @@ function ProjectTasksInner() {
         tasks={tasks}
         projectsById={project? { [project.id]: project }: {} as any}
         statusesById={statusesById}
+        assigneesByTask={assigneesByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
       />
@@ -132,6 +136,7 @@ function ProjectTasksInner() {
           status={openTask.status_id ? statusesById[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          onAssigneesChanged={(taskId, users)=> setAssigneesByTask(prev=>({ ...prev, [taskId]: users }))}
           projects={project? [project] : []}
           statusesById={statusesById}
           statusesByProject={project? { [project.id]: statuses } : {} as any}
