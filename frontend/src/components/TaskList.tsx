@@ -67,20 +67,20 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
 
 function TaskRow({ task, project, status, assignees, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
   return (
-    <div className="flex items-center gap-2 pl-3 pr-2 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
+    <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
         {task.is_completed ? <div className="w-3 h-3 bg-[var(--stroke)]"/> : null}
       </div>
       <div className="flex-1 text-sm">
         <div className={`${task.is_completed? 'line-through opacity-60': ''}`}>{task.name}</div>
       </div>
-      <div className="text-xs opacity-70 w-[120px] text-right tabular-nums">
+      <div className="text-xs opacity-70 w-[110px] text-right tabular-nums">
         {formatDueLabel(task.due_date)}
       </div>
-      <div className="text-xs opacity-80 w-[140px] text-right truncate">
+      <div className="text-xs opacity-80 w-[120px] text-right truncate">
         {assignees && assignees.length > 0 ? assignees.map(handleFor).join(' ') : ''}
       </div>
-      <div className="text-xs opacity-70 w-[110px] text-right truncate">
+      <div className="text-xs opacity-70 w-[100px] text-right truncate">
         {project?.name ? `#${project.name}` : ''}
       </div>
     </div>
