@@ -14,31 +14,24 @@ export type Task = {
 
 export type Project = { id: string; name: string };
 export type Status = { id: string; label: string; is_done: boolean };
+export type User = { id: string; email: string; display_name: string };
 
 export type TaskListProps = {
   tasks: Task[];
   projectsById?: Record<string, Project>;
   statusesById?: Record<string, Status>;
+  assigneesByTask?: Record<string, User[]>;
   onToggleCompleted?: (task: Task, next: boolean) => void;
   onOpen?: (task: Task) => void;
   onNew?: () => void;
   newDisabled?: boolean;
 };
 
-export default function TaskList({ tasks, projectsById={}, statusesById={}, onToggleCompleted, onOpen, onNew, newDisabled }: TaskListProps) {
+export default function TaskList({ tasks, projectsById={}, statusesById={}, assigneesByTask={}, onToggleCompleted, onOpen, onNew, newDisabled }: TaskListProps) {
   const grouped = useMemo(() => groupByDue(tasks), [tasks]);
   const sections = ["Today", "This Week", "This Month", "Later", "No Date"] as const;
   return (
     <div className="frame bg-[#2B2B31] relative">
-      {onNew && (
-        <button
-          title="New task"
-          className={`button absolute right-2 top-2 w-8 h-8 p-0 flex items-center justify-center ${newDisabled? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={() => { if(!newDisabled) onNew(); }}
-        >
-          +
-        </button>
-      )}
       {sections.map((sec, idx) => (
         <div key={sec} className={idx>0?"border-t border-[#3A3A45]":undefined}>
           <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45]">{sec}</div>
@@ -51,6 +44,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, onTo
                 task={t}
                 project={projectsById[t.project_id || '']}
                 status={t.status_id ? statusesById[t.status_id] : undefined}
+                assignees={assigneesByTask?.[t.id] || []}
                 onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
                 onOpen={()=>onOpen?.(t)}
               />
@@ -62,19 +56,22 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, onTo
   );
 }
 
-function TaskRow({ task, project, status, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
+function TaskRow({ task, project, status, assignees, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
   return (
-    <div className="flex items-center gap-3 px-3 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
+    <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
         {task.is_completed ? <div className="w-3 h-3 bg-[var(--stroke)]"/> : null}
       </div>
       <div className="flex-1 text-sm">
         <div className={`${task.is_completed? 'line-through opacity-60': ''}`}>{task.name}</div>
       </div>
-      <div className="text-xs opacity-70 w-[140px] text-right tabular-nums">
+      <div className="text-xs opacity-70 w-[110px] text-right tabular-nums">
         {formatDueLabel(task.due_date)}
       </div>
-      <div className="text-xs opacity-70 w-[140px] text-right truncate">
+      <div className="text-xs opacity-80 w-[120px] text-right truncate">
+        {assignees && assignees.length > 0 ? assignees.map(handleFor).join(' ') : ''}
+      </div>
+      <div className="text-xs opacity-70 w-[100px] text-right truncate">
         {project?.name ? `#${project.name}` : ''}
       </div>
     </div>
@@ -117,4 +114,9 @@ export function formatDueLabel(iso?: string | null) {
   if (d >= startOfWeek && d <= endOfWeek) return dayNames[d.getDay()];
   // Otherwise short date
   return `${dayNames[d.getDay()]} ${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function handleFor(u: User) {
+  const local = (u.email || '').split('@')[0] || u.display_name.replace(/\s+/g,'').toLowerCase();
+  return `@${local}`;
 }

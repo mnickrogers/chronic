@@ -114,3 +114,36 @@ class CommentOut(BaseModel):
 class SessionOut(BaseModel):
     user: UserOut
     org: OrganizationOut
+
+
+# Workspace members
+class WorkspaceMemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    user: UserOut
+    role: str
+
+
+class WorkspaceMemberAddIn(BaseModel):
+    user_id: Optional[str] = None
+    email: Optional[EmailStr] = None
+    display_name: Optional[str] = None
+
+
+# Project members
+class ProjectMemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    user: UserOut
+    role: str
+
+
+class ProjectMemberAddIn(BaseModel):
+    user_id: str
+
+
+# Task assignees
+class TaskAssigneeAddIn(BaseModel):
+    user_id: str
+
+class TaskAssigneeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    user: UserOut

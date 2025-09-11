@@ -21,6 +21,7 @@ function AllTasksInner() {
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [statusesByProject, setStatusesByProject] = useState<Record<string, Status[]>>({});
   const [openTask, setOpenTask] = useState<Task | null>(null);
+  const [assigneesByTask, setAssigneesByTask] = useState<Record<string, any[]>>({});
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -30,7 +31,7 @@ function AllTasksInner() {
         const prjs = await api.listProjects(workspaceId);
         setProjects(prjs);
         // All tasks in workspace, including those with no project
-        const all = await api.listWorkspaceTasks(workspaceId);
+        const all:any[] = await api.listWorkspaceTasks(workspaceId) as any;
         setTasks(all as any);
         // Load statuses for each project and keep both flattened and by-project
         const statusGroups = await Promise.all(prjs.map(async (p:any) => ({ id: p.id, statuses: await api.getStatuses(p.id) })));
@@ -41,6 +42,10 @@ function AllTasksInner() {
         for (const s of DEFAULT_STATUSES) flat[s.id] = s as any;
         setStatuses(flat);
         setStatusesByProject(byProject);
+        try {
+          const entries = await Promise.all((all as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)]));
+          setAssigneesByTask(Object.fromEntries(entries));
+        } catch {}
       } catch {}
     })();
   }, [workspaceId]);
@@ -56,6 +61,7 @@ function AllTasksInner() {
     if (!workspaceId) return;
     const t = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, DEFAULT_STATUSES[0].id);
     setTasks(prev=>[t as any, ...prev]);
+    setAssigneesByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setOpenTask(t as any);
   };
 
@@ -76,6 +82,7 @@ function AllTasksInner() {
         tasks={tasks}
         projectsById={projectsById}
         statusesById={statuses}
+        assigneesByTask={assigneesByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
         onNew={createNew}
@@ -88,6 +95,7 @@ function AllTasksInner() {
           status={openTask.status_id ? statuses[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          onAssigneesChanged={(taskId, users)=> setAssigneesByTask(prev=>({ ...prev, [taskId]: users }))}
           projects={projects as any}
           statusesById={statuses}
           statusesByProject={statusesByProject}

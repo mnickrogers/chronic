@@ -3,16 +3,23 @@ import { useEffect, useState } from "react";
 import { api, API_BASE } from "@/lib/api";
 import type { Task, Project, Status } from "./TaskList";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
+import UserPicker from "@/components/UserPicker";
+import UserBadge from "@/components/UserBadge";
+import { useCurrentWorkspace } from "@/components/AppShell";
 
-export default function TaskDetail({ task, project, status, onClose, onChange, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
+export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
   const [comment, setComment] = useState('');
   const [desc, setDesc] = useState<string>(typeof (task as any).description?.text === 'string' ? (task as any).description.text : '');
+  const [assignees, setAssignees] = useState<any[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { workspaceId } = useCurrentWorkspace();
 
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
   useEffect(() => { (async () => { try { const res = await fetch(`${API_BASE}/comments/task/${task.id}`, { credentials: 'include' }); if(res.ok) setComments(await res.json()); } catch {} })(); }, [task.id]);
+  useEffect(() => { (async () => { try { const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); onAssigneesChanged?.(task.id, users as any[]); } catch {} })(); }, [task.id]);
 
   const saveMeta = async () => {
     try {
@@ -51,7 +58,36 @@ export default function TaskDetail({ task, project, status, onClose, onChange, p
           <input className="bg-transparent outline-none w-full text-xl" value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveMeta} />
         </div>
         <div className="p-4 border-b border-[#3A3A45] grid grid-cols-2 gap-4 text-sm">
-          <Meta label="Assigned to">—</Meta>
+          <Meta label="Assigned to">
+            <div className="flex items-center gap-2 flex-wrap">
+              {assignees.length === 0 && <span className="opacity-70">—</span>}
+              {assignees.map(u => (
+                <span key={u.id} className="flex items-center gap-1 bg-[#1F1F23] border border-[var(--stroke)] px-2 py-1 rounded-sm">
+                  <UserBadge name={u.display_name} email={u.email} />
+                  <span className="text-xs">{u.display_name}</span>
+                  <button
+                    className="text-xs opacity-70 hover:opacity-100"
+                    onClick={async (e)=>{ e.stopPropagation(); try{ await api.removeTaskAssignee(task.id, u.id); const next = assignees.filter(x=>x.id!==u.id); setAssignees(next); onAssigneesChanged?.(task.id, next); }catch{} }}
+                    title="Remove"
+                  >×</button>
+                </span>
+              ))}
+              <div className="relative">
+                <button className="button" onClick={()=>setPickerOpen(v=>!v)}>Assign</button>
+                {pickerOpen && workspaceId && (
+                  <div className="absolute z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
+                    <UserPicker
+                      workspaceId={workspaceId}
+                      onSelect={async (user)=>{
+                        try { await api.addTaskAssignee(task.id, user.id); const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); onAssigneesChanged?.(task.id, users as any[]); } catch {}
+                        setPickerOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </Meta>
           <Meta label="Due">
             <input type="date" className="input w-full" value={due} onChange={e=>setDue(e.target.value)} onBlur={saveMeta} />
           </Meta>
