@@ -48,7 +48,7 @@ export default function UserPicker({
   };
 
   return (
-    <div className="border border-[var(--stroke)] rounded-sm bg-[#2B2B31]">
+    <div className="border border-[var(--stroke)] rounded-sm bg-[var(--bg-2)]">
       <input
         className="input w-full border-b border-[var(--stroke)]"
         placeholder={placeholder}
@@ -58,7 +58,7 @@ export default function UserPicker({
       />
       <div className="max-h-56 overflow-auto">
         {filtered.map(m => (
-          <button key={m.user.id} className="w-full text-left px-3 py-2 hover:bg-[#222227] flex items-center gap-2" onClick={()=>onSelect(m.user)}>
+          <button key={m.user.id} className="w-full text-left px-3 py-2 hover:bg-[var(--bg-1)] flex items-center gap-2" onClick={()=>onSelect(m.user)}>
             <span className="rounded-full bg-[#3A3A45] w-5 h-5 text-[10px] text-center leading-5">
               {m.user.display_name.split(/\s+/).slice(0,2).map(s=>s[0]?.toUpperCase()||'').join('')}
             </span>
@@ -69,7 +69,7 @@ export default function UserPicker({
           </button>
         ))}
         {allowInvite && isEmail(query) && !existingEmail && (
-          <button className="w-full text-left px-3 py-2 hover:bg-[#222227] text-sm" onClick={invite} disabled={busy}>
+          <button className="w-full text-left px-3 py-2 hover:bg-[var(--bg-1)] text-sm" onClick={invite} disabled={busy}>
             {busy ? 'Inviting…' : `Invite ${query.trim()} to workspace`}
           </button>
         )}
@@ -80,4 +80,3 @@ export default function UserPicker({
     </div>
   );
 }
-

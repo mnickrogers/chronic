@@ -36,6 +36,8 @@ class User(Base):
     first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(255))
+    # UI theme preference (persisted across sessions). Defaults to 'nord'.
+    theme: Mapped[str] = mapped_column(String(16), default="nord")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     memberships: Mapped[List["OrgMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")

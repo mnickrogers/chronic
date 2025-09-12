@@ -25,7 +25,7 @@ export default function WorkspacePage() {
         <Link className="button" href="/">All Workspaces</Link>
       </header>
 
-      <div className="frame p-4 bg-[#2B2B31]">
+      <div className="frame p-4 bg-[var(--bg-2)]">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-md">Projects</h2>
           <div className="flex gap-2">
@@ -35,7 +35,7 @@ export default function WorkspacePage() {
         </div>
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {projects.map(p => (
-            <li key={p.id} className="frame bg-[#222227] p-3 hover:border-[var(--accent)]">
+            <li key={p.id} className="frame bg-[var(--bg-1)] p-3 hover:border-[var(--accent)]">
               <div className="flex items-center justify-between">
                 <div className="text-sm">{p.name}</div>
                 <Link className="button" href={`/p/${p.id}`}>Open</Link>
@@ -47,4 +47,3 @@ export default function WorkspacePage() {
     </div>
   );
 }
-

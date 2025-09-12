@@ -84,7 +84,7 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
         const items = sortTasksForColumn(colId, columns[colId].tasks);
         const showColActive = dragOver?.colId === colId && dragOver?.pos === 'end';
         return (
-        <div key={colId} className={`frame bg-[#2B2B31] flex flex-col max-h-[70vh] ${showColActive? 'border-[var(--accent)]': ''}`}
+        <div key={colId} className={`frame bg-[var(--bg-2)] flex flex-col max-h-[70vh] ${showColActive? 'border-[var(--accent)]': ''}`}
           onDragOver={(e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(prev => prev?.colId===colId && prev?.pos==='end' ? prev : { colId, pos: 'end' }); }}
           onDrop={(e)=>{
             e.preventDefault();
@@ -102,7 +102,7 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
             setDragging(null);
           }}
         >
-          <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45] sticky top-0 bg-[#2B2B31] z-10 flex items-center justify-between">
+          <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45] sticky top-0 bg-[var(--bg-2)] z-10 flex items-center justify-between">
             <div>{columns[colId].label}</div>
             <button
               className={`button w-6 h-6 p-0 flex items-center justify-center ${newDisabled? 'opacity-50 cursor-not-allowed':''}`}
@@ -216,7 +216,7 @@ function TaskCard({ task, project, tags, assignees, columnId, draggingId, dragOv
   const showAfter = dragOverInfo && dragOverInfo.colId === columnId && dragOverInfo.targetId === task.id && dragOverInfo.pos === 'after';
   return (
     <div
-      className={`border border-[var(--stroke)] bg-[#1F1F23] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)] ${isDragging? 'opacity-70 rotate-[0.5deg]': ''} ${showBefore? 'shadow-[0_-2px_0_#8B5CF6_inset]': ''} ${showAfter? 'shadow-[0_2px_0_#8B5CF6_inset]': ''}`}
+      className={`border border-[var(--stroke)] bg-[var(--bg-1)] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)] ${isDragging? 'opacity-70 rotate-[0.5deg]': ''} ${showBefore? 'shadow-[0_-2px_0_#8B5CF6_inset]': ''} ${showAfter? 'shadow-[0_2px_0_#8B5CF6_inset]': ''}`}
       onClick={onOpen}
       draggable
       onDragStart={(e)=>{

@@ -59,7 +59,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-20 z-50" onClick={onClose}>
-      <div className="frame bg-[#2B2B31] w-full max-w-3xl" onClick={(e)=>{ e.stopPropagation(); if(menuOpen) setMenuOpen(false); }}>
+      <div className="frame bg-[var(--bg-2)] w-full max-w-3xl" onClick={(e)=>{ e.stopPropagation(); if(menuOpen) setMenuOpen(false); }}>
         <div className="p-4 border-b border-[#3A3A45] flex items-center gap-2">
           <input className="bg-transparent outline-none text-xl flex-1" value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveMeta} />
           <div className="relative">
@@ -71,9 +71,9 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
               ...
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 z-10 w-44 border border-[var(--stroke)] bg-[#2B2B31] rounded-sm shadow">
+              <div className="absolute right-0 mt-1 z-10 w-44 border border-[var(--stroke)] bg-[var(--bg-2)] rounded-sm shadow">
                 <button
-                  className="w-full text-left px-3 py-2 hover:bg-[#222227] text-red-400"
+                  className="w-full text-left px-3 py-2 hover:bg-[var(--bg-1)] text-red-400"
                   onClick={async (e)=>{
                     e.stopPropagation();
                     setMenuOpen(false);
@@ -97,7 +97,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
             <div className="flex items-center gap-2 flex-wrap">
               {assignees.length === 0 && <span className="opacity-70">—</span>}
               {assignees.map(u => (
-                <span key={u.id} className="flex items-center gap-1 bg-[#1F1F23] border border-[var(--stroke)] px-2 py-1 rounded-sm">
+                <span key={u.id} className="flex items-center gap-1 bg-[var(--bg-1)] border border-[var(--stroke)] px-2 py-1 rounded-sm">
                   <UserBadge name={u.display_name} email={u.email} />
                   <span className="text-xs">{u.display_name}</span>
                   <button
@@ -171,7 +171,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
         <div className="p-0">
           <div className="border-t border-[var(--stroke)]"></div>
           <textarea
-            className="w-full min-h-[40vh] bg-[#2B2B31] p-4 outline-none"
+            className="w-full min-h-[40vh] bg-[var(--bg-2)] p-4 outline-none"
             placeholder="Write a description…"
             value={desc}
             onChange={e=>setDesc(e.target.value)}

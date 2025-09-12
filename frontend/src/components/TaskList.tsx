@@ -34,7 +34,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
   const grouped = useMemo(() => groupByDue(tasks), [tasks]);
   const sections = ["Today", "This Week", "This Month", "Later", "No Date"] as const;
   return (
-    <div className="frame bg-[#2B2B31] relative">
+    <div className="frame bg-[var(--bg-2)] relative">
       {sections.map((sec, idx) => (
         <div key={sec} className={idx>0?"border-t border-[#3A3A45]":undefined}>
           <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45]">{sec}</div>
@@ -62,7 +62,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
 
 function TaskRow({ task, project, status, assignees, tags, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], tags?: Tag[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
   return (
-    <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
+      <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[var(--bg-1)]" onClick={onOpen}>
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
         {task.is_completed ? <div className="w-3 h-3 bg-[var(--stroke)]"/> : null}
       </div>

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime, date
 
 
@@ -10,6 +10,7 @@ class UserOut(BaseModel):
     first_name: Optional[str]
     last_name: Optional[str]
     display_name: str
+    theme: str
     created_at: datetime
 
 
@@ -124,6 +125,8 @@ class MeUpdateIn(BaseModel):
     last_name: Optional[str] = None
     # For backward compatibility, allow display_name; server will map it.
     display_name: Optional[str] = None
+    # Persisted theme preference
+    theme: Optional[Literal['nord','dust','forest','sunset']] = None
 
 
 # Workspace members

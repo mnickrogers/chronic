@@ -37,7 +37,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="frame w-full max-w-md p-6 bg-[#2B2B31]">
+      <div className="frame w-full max-w-md p-6 bg-[var(--bg-2)]">
         <h1 className="text-xl mb-4">{mode === 'login' ? 'Log in' : 'Sign up'} to Chronic</h1>
         <form onSubmit={submit} className="space-y-3">
           {mode === 'signup' && (

@@ -111,7 +111,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active?
     <Link
       href={href}
       className={`block px-3 py-2 border border-transparent rounded-sm ${
-        active ? 'border-[var(--stroke)] bg-[#2B2B31]' : 'hover:border-[var(--stroke)]'
+        active ? 'border-[var(--stroke)] bg-[var(--bg-2)]' : 'hover:border-[var(--stroke)]'
       }`}
     >
       {label}
