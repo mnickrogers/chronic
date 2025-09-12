@@ -76,20 +76,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="mt-2 p-2 text-[var(--stroke)] hover:text-white"
+          className="mt-2 button w-9 h-9 flex items-center justify-center text-[var(--stroke)]"
           title="Settings"
+          aria-label="Settings"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth={1.5}
-            className="w-5 h-5"
+            strokeWidth={2}
+            className="w-4 h-4"
+            shapeRendering="geometricPrecision"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
               d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894a1.125 1.125 0 0 0 1.135.917l.905-.065a1.125 1.125 0 0 1 1.18.896l.211 1.063c.101.508.5.89.995.95l.916.11c.55.066.961.517.961 1.07v1.106c0 .553-.412 1.004-.961 1.07l-.916.11a1.125 1.125 0 0 0-.995.95l-.211 1.063a1.125 1.125 0 0 1-1.18.896l-.905-.065a1.125 1.125 0 0 0-1.135.917l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.02-.398-1.11-.94l-.149-.894a1.125 1.125 0 0 0-1.135-.917l-.905.065a1.125 1.125 0 0 1-1.18-.896l-.211-1.063a1.125 1.125 0 0 0-.995-.95l-.916-.11a1.125 1.125 0 0 1-.961-1.07V9.78c0-.553.412-1.004.961-1.07l.916-.11c.495-.06.894-.442.995-.95l.211-1.063a1.125 1.125 0 0 1 1.18-.896l.905.065c.57.041 1.065-.375 1.135-.917l.149-.894ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
             />
           </svg>
