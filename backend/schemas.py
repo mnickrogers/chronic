@@ -7,6 +7,8 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     email: EmailStr
+    first_name: Optional[str]
+    last_name: Optional[str]
     display_name: str
     created_at: datetime
 
@@ -14,7 +16,8 @@ class UserOut(BaseModel):
 class AuthSignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
-    display_name: str
+    first_name: str
+    last_name: str
 
 
 class AuthLoginIn(BaseModel):
@@ -114,6 +117,13 @@ class CommentOut(BaseModel):
 class SessionOut(BaseModel):
     user: UserOut
     org: OrganizationOut
+
+
+class MeUpdateIn(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    # For backward compatibility, allow display_name; server will map it.
+    display_name: Optional[str] = None
 
 
 # Workspace members

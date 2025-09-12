@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import SettingsDialog from "@/components/SettingsDialog";
 
 /**
  * AppShell renders the persistent left navigation and header chrome
@@ -55,6 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   // Ensure a workspace is cached early for routes that need it
   useCurrentWorkspace();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
@@ -66,16 +68,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Sidebar */}
-      <aside className="border-r border-[var(--stroke)] p-2">
+      <aside className="border-r border-[var(--stroke)] p-2 flex flex-col justify-between">
         <nav className="space-y-1 text-sm">
           <NavLink href="/tasks" label="All Tasks" active={isActive('/tasks')} />
           <NavLink href="/projects" label="Projects" active={isActive('/projects')} />
           <NavLink href="/tags" label="Tags" active={isActive('/tags')} />
         </nav>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="mt-2 button w-9 h-9 flex items-center justify-center text-[var(--stroke)]"
+          title="Settings"
+          aria-label="Settings"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="w-4 h-4"
+            shapeRendering="geometricPrecision"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894a1.125 1.125 0 0 0 1.135.917l.905-.065a1.125 1.125 0 0 1 1.18.896l.211 1.063c.101.508.5.89.995.95l.916.11c.55.066.961.517.961 1.07v1.106c0 .553-.412 1.004-.961 1.07l-.916.11a1.125 1.125 0 0 0-.995.95l-.211 1.063a1.125 1.125 0 0 1-1.18.896l-.905-.065a1.125 1.125 0 0 0-1.135.917l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.02-.398-1.11-.94l-.149-.894a1.125 1.125 0 0 0-1.135-.917l-.905.065a1.125 1.125 0 0 1-1.18-.896l-.211-1.063a1.125 1.125 0 0 0-.995-.95l-.916-.11a1.125 1.125 0 0 1-.961-1.07V9.78c0-.553.412-1.004.961-1.07l.916-.11c.495-.06.894-.442.995-.95l.211-1.063a1.125 1.125 0 0 1 1.18-.896l.905.065c.57.041 1.065-.375 1.135-.917l.149-.894ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
+          </svg>
+        </button>
       </aside>
 
       {/* Main content area */}
       <main className="p-4">{children}</main>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

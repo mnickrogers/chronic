@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from './api';
 
-type Session = { user: { id: string; email: string; display_name: string }, org: { id: string, name: string } } | null;
+type Session = { user: { id: string; email: string; display_name: string; first_name?: string; last_name?: string }, org: { id: string, name: string } } | null;
 
 const SessionCtx = createContext<{ session: Session, refresh: () => Promise<void> }>({ session: null, refresh: async () => {} });
 
@@ -16,4 +16,3 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSession() { return useContext(SessionCtx); }
-

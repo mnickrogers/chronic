@@ -7,7 +7,8 @@ import { useSession } from '@/lib/session';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [first, setFirst] = useState('');
+  const [last, setLast] = useState('');
   const [mode, setMode] = useState<'login'|'signup'>('login');
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
@@ -22,7 +23,9 @@ export default function LoginPage() {
         await refresh();
         router.replace('/');
       } else {
-        await api.signup(email, password, name || email.split('@')[0]);
+        const firstName = first || email.split('@')[0];
+        const lastName = last || '';
+        await api.signup(email, password, firstName, lastName);
         await refresh();
         // After signup, collect workspace name before entering the app
         router.replace('/welcome');
@@ -38,9 +41,15 @@ export default function LoginPage() {
         <h1 className="text-xl mb-4">{mode === 'login' ? 'Log in' : 'Sign up'} to Chronic</h1>
         <form onSubmit={submit} className="space-y-3">
           {mode === 'signup' && (
-            <div>
-              <label className="block mb-1 text-sm">Display name</label>
-              <input className="input w-full" value={name} onChange={e=>setName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 text-sm">First name</label>
+                <input className="input w-full" value={first} onChange={e=>setFirst(e.target.value)} />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Last name</label>
+                <input className="input w-full" value={last} onChange={e=>setLast(e.target.value)} />
+              </div>
             </div>
           )}
           <div>
