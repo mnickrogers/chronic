@@ -100,6 +100,22 @@ function ProjectTasksInner() {
     setOpenTask(t as any);
   };
 
+  const createInStatus = async (statusId: string | null) => {
+    try {
+      const t:any = await api.createTask(id, 'Untitled Task', statusId || undefined);
+      setTasks(prev=>[t, ...prev]);
+      setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
+      setOpenTask(t);
+    } catch {}
+  };
+
+  const onDrop = async (taskId: string, toStatusId: string | null) => {
+    try {
+      const updated:any = await api.updateTask(taskId, { status_id: toStatusId });
+      setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
+    } catch {}
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3" onClick={()=>{ if(menuOpen) setMenuOpen(false); }}>
@@ -222,6 +238,8 @@ function ProjectTasksInner() {
           statusOrder={statuses.map(s=>s.id)}
           assigneesByTask={assigneesByTask}
           tagsByTask={tagsByTask}
+          onCreateInStatus={createInStatus}
+          onDrop={onDrop}
           onToggleCompleted={(t,next)=>toggle(t,next)}
           onOpen={(t)=>setOpenTask(t)}
         />

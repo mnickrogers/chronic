@@ -28,16 +28,39 @@ export type TaskBoardProps = {
   tagsByTask?: Record<string, Tag[]>;
   onOpen?: (task: Task) => void;
   onToggleCompleted?: (task: Task, next: boolean) => void;
+  onDrop?: (taskId: string, toStatusId: string | null) => void;
+  onCreateInStatus?: (statusId: string | null) => void;
+  newDisabled?: boolean;
 };
 
-export default function TaskBoard({ tasks, projectsById={}, statusesById={}, statusOrder, assigneesByTask={}, tagsByTask={}, onOpen, onToggleCompleted }: TaskBoardProps) {
-  const { columns, order } = useMemo(() => buildColumns(tasks, statusesById, statusOrder), [tasks, statusesById, statusOrder]);
+export default function TaskBoard({ tasks, projectsById={}, statusesById={}, statusOrder, assigneesByTask={}, tagsByTask={}, onOpen, onToggleCompleted, onDrop, onCreateInStatus, newDisabled }: TaskBoardProps) {
+  const { columns, order, unknownId } = useMemo(() => buildColumns(tasks, statusesById, statusOrder), [tasks, statusesById, statusOrder]);
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${order.length}, minmax(220px, 1fr))` }}>
       {order.map((colId) => (
-        <div key={colId} className="frame bg-[#2B2B31] flex flex-col max-h-[70vh]">
-          <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45] sticky top-0 bg-[#2B2B31] z-10">{columns[colId].label}</div>
-          <div className="p-2 overflow-auto space-y-2">
+        <div key={colId} className="frame bg-[#2B2B31] flex flex-col max-h-[70vh]"
+          onDragOver={(e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+          onDrop={(e)=>{
+            e.preventDefault();
+            try {
+              const raw = e.dataTransfer.getData('application/json');
+              const data = JSON.parse(raw || '{}');
+              if (data && data.taskId && onDrop) onDrop(data.taskId as string, colId === unknownId ? null : colId);
+            } catch {}
+          }}
+        >
+          <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45] sticky top-0 bg-[#2B2B31] z-10 flex items-center justify-between">
+            <div>{columns[colId].label}</div>
+            <button
+              className={`button w-6 h-6 p-0 flex items-center justify-center ${newDisabled? 'opacity-50 cursor-not-allowed':''}`}
+              title="New task in this column"
+              onClick={()=>{ if (!newDisabled) onCreateInStatus?.(colId === unknownId ? null : colId); }}
+              disabled={!!newDisabled}
+            >
+              +
+            </button>
+          </div>
+          <div className="p-2 overflow-auto space-y-2 min-h-[40px]">
             {columns[colId].tasks.length === 0 ? (
               <div className="text-sm opacity-60 px-1">No tasks</div>
             ) : (
@@ -99,7 +122,7 @@ function buildColumns(
   for (const sid of order) {
     columns[sid] = { label: columnLabels[sid] || "", tasks: byStatus[sid] || [] } as any;
   }
-  return { columns, order };
+  return { columns, order, unknownId } as const;
 }
 
 function handleFor(u: User) {
@@ -109,7 +132,15 @@ function handleFor(u: User) {
 
 function TaskCard({ task, project, tags, assignees, onOpen, onToggleCompleted }:{ task: Task, project?: Project, tags?: Tag[], assignees?: User[], onOpen?: ()=>void, onToggleCompleted?: (next:boolean)=>void }){
   return (
-    <div className="border border-[var(--stroke)] bg-[#1F1F23] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)]" onClick={onOpen}>
+    <div
+      className="border border-[var(--stroke)] bg-[#1F1F23] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)]"
+      onClick={onOpen}
+      draggable
+      onDragStart={(e)=>{
+        try { e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, fromStatusId: task.status_id ?? null })); } catch {}
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+    >
       <div className="flex items-start gap-2">
         <button
           className="w-4 h-4 border border-[var(--stroke)] rounded-sm flex items-center justify-center mt-0.5"

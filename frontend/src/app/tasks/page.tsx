@@ -87,6 +87,11 @@ function AllTasksInner() {
   }, [workspaceId]);
 
   const projectsById = useMemo(() => Object.fromEntries(projects.map((p:any)=>[p.id, p])), [projects]);
+  const statusIdToProjectId = useMemo(() => {
+    const m: Record<string, string> = {};
+    Object.entries(statusesByProject).forEach(([pid, sts]) => { (sts||[]).forEach((s:any)=>{ m[s.id] = pid; }); });
+    return m;
+  }, [statusesByProject]);
   const filteredTasks = useMemo(() => {
     if (selectedTags.length === 0) return tasks;
     return tasks.filter(t => (tagsByTask[t.id]||[]).some((tg:any)=> selectedTags.includes(tg.id)));
@@ -104,6 +109,47 @@ function AllTasksInner() {
     setAssigneesByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setTagsByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setOpenTask(t as any);
+  };
+
+  const createInStatus = async (statusId: string | null) => {
+    if (!workspaceId) return;
+    try {
+      // If status belongs to a project, create inside that project. If default or null → workspace task.
+      const projectId = statusId ? statusIdToProjectId[statusId] : null;
+      if (projectId) {
+        const t:any = await api.createTask(projectId, 'Untitled Task', statusId || undefined);
+        setTasks(prev=>[t, ...prev]);
+        setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
+        setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
+        setOpenTask(t);
+      } else {
+        const t:any = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, statusId || undefined);
+        setTasks(prev=>[t, ...prev]);
+        setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
+        setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
+        setOpenTask(t);
+      }
+    } catch {}
+  };
+
+  const onDrop = async (taskId: string, toStatusId: string | null) => {
+    const t = tasks.find(x=>x.id===taskId);
+    if (!t) return;
+    try {
+      let body: any = { status_id: toStatusId };
+      if (toStatusId && statusIdToProjectId[toStatusId]) {
+        // Move across projects if target status belongs to a different project
+        const destProjectId = statusIdToProjectId[toStatusId];
+        if (destProjectId !== (t.project_id || null)) body.project_id = destProjectId;
+      } else if (!toStatusId && t.project_id) {
+        // Dropping into "No Status" does not imply leaving the project; keep project as is
+      } else if (toStatusId && toStatusId.startsWith('default:')) {
+        // Default status → project-less task
+        if (t.project_id) body.project_id = null;
+      }
+      const updated:any = await api.updateTask(taskId, body);
+      setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
+    } catch {}
   };
 
   return (
@@ -149,6 +195,9 @@ function AllTasksInner() {
           statusOrder={['default:backlog','default:in_progress','default:blocked','default:done']}
           assigneesByTask={assigneesByTask}
           tagsByTask={tagsByTask}
+          newDisabled={!workspaceId}
+          onCreateInStatus={createInStatus}
+          onDrop={onDrop}
           onToggleCompleted={(t,next)=>toggle(t,next)}
           onOpen={(t)=>setOpenTask(t)}
         />

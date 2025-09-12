@@ -40,3 +40,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - All task lists (All Tasks and Project Tasks) support both `List` and `Board` views.
 - Use the view toggle in the page header to switch.
 - Your selection is saved to `localStorage` (`chronic:taskViewMode`) and applied across pages.
+- In Board view, drag tasks between columns to change their status. In All Tasks, dropping into another project's status moves the task to that project.
+- Use the `+` button in a column header to create a new task pre-set to that column's status.
