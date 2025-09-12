@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Project, Status } from "@/components/TaskList";
 import TaskDetail from "@/components/TaskDetail";
 import { api } from "@/lib/api";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
+import TagFilter from "@/components/TagFilter";
 
 export default function AllTasksPage() {
   return (
@@ -22,6 +23,10 @@ function AllTasksInner() {
   const [statusesByProject, setStatusesByProject] = useState<Record<string, Status[]>>({});
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const [assigneesByTask, setAssigneesByTask] = useState<Record<string, any[]>>({});
+  const [tagsByTask, setTagsByTask] = useState<Record<string, any[]>>({});
+  const [workspaceTags, setWorkspaceTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -43,14 +48,45 @@ function AllTasksInner() {
         setStatuses(flat);
         setStatusesByProject(byProject);
         try {
-          const entries = await Promise.all((all as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)]));
-          setAssigneesByTask(Object.fromEntries(entries));
+          const assigneeEntries = await Promise.all((all as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)]));
+          setAssigneesByTask(Object.fromEntries(assigneeEntries));
+        } catch {}
+        try {
+          const ids = (all as any[]).map((t:any)=>t.id);
+          const batch = ids.length ? await api.listTagsForTasks(ids) as any : {};
+          setTagsByTask(batch);
+        } catch {}
+        try {
+          setWorkspaceTags(await api.listTags(workspaceId) as any);
         } catch {}
       } catch {}
     })();
   }, [workspaceId]);
 
+  // Live updates for workspace tags
+  useEffect(() => {
+    if (!workspaceId) return;
+    const ws = new WebSocket((process.env.NEXT_PUBLIC_WS_BASE || 'ws://localhost:8000') + '/ws');
+    wsRef.current = ws;
+    ws.onopen = () => ws.send(JSON.stringify({ subscribe: `workspace:${workspaceId}` }));
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'tag.created') setWorkspaceTags(prev => {
+        // Avoid dup by id
+        if (prev.some((t:any)=>t.id===msg.tag.id)) return prev;
+        return [...prev, msg.tag];
+      });
+      if (msg.type === 'tag.updated') setWorkspaceTags(prev => prev.map((t:any)=> t.id===msg.tag.id ? msg.tag : t));
+      if (msg.type === 'tag.deleted') setWorkspaceTags(prev => prev.filter((t:any)=> t.id !== msg.id));
+    };
+    return () => { try { ws.close(); } catch {} };
+  }, [workspaceId]);
+
   const projectsById = useMemo(() => Object.fromEntries(projects.map((p:any)=>[p.id, p])), [projects]);
+  const filteredTasks = useMemo(() => {
+    if (selectedTags.length === 0) return tasks;
+    return tasks.filter(t => (tagsByTask[t.id]||[]).some((tg:any)=> selectedTags.includes(tg.id)));
+  }, [tasks, tagsByTask, selectedTags]);
 
   const toggle = async (t: Task, next: boolean) => {
     const updated = await api.updateTask(t.id, { is_completed: next });
@@ -62,6 +98,7 @@ function AllTasksInner() {
     const t = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, DEFAULT_STATUSES[0].id);
     setTasks(prev=>[t as any, ...prev]);
     setAssigneesByTask(prev=>({ ...prev, [(t as any).id]: [] }));
+    setTagsByTask(prev=>({ ...prev, [(t as any).id]: [] }));
     setOpenTask(t as any);
   };
 
@@ -78,11 +115,19 @@ function AllTasksInner() {
           +
         </button>
       </div>
+      <TagFilter
+        tags={workspaceTags as any}
+        selected={selectedTags}
+        onToggle={(id)=> setSelectedTags(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id])}
+        onClear={()=> setSelectedTags([])}
+      />
+
       <TaskList
-        tasks={tasks}
+        tasks={filteredTasks}
         projectsById={projectsById}
         statusesById={statuses}
         assigneesByTask={assigneesByTask}
+        tagsByTask={tagsByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
         onNew={createNew}
@@ -95,6 +140,7 @@ function AllTasksInner() {
           status={openTask.status_id ? statuses[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          onTagsChanged={(taskId, tagList)=> setTagsByTask(prev=>({ ...prev, [taskId]: tagList }))}
           onAssigneesChanged={(taskId, users)=> setAssigneesByTask(prev=>({ ...prev, [taskId]: users }))}
           onDelete={(id)=>{ setTasks(prev => prev.filter(t => t.id !== id)); setAssigneesByTask(prev=>{ const { [id]:_, ...rest } = prev; return rest; }); setOpenTask(null); }}
           projects={projects as any}

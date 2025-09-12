@@ -70,6 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="space-y-1 text-sm">
           <NavLink href="/tasks" label="All Tasks" active={isActive('/tasks')} />
           <NavLink href="/projects" label="Projects" active={isActive('/projects')} />
+          <NavLink href="/tags" label="Tags" active={isActive('/tags')} />
         </nav>
       </aside>
 

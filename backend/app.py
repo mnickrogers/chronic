@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from .config import settings
-from .routers import auth, orgs, projects, tasks, comments, realtime
+from .routers import auth, orgs, projects, tasks, comments, realtime, tags
 
 
 def create_app() -> FastAPI:
@@ -24,6 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router, prefix="/api")
     app.include_router(tasks.router, prefix="/api")
     app.include_router(comments.router, prefix="/api")
+    app.include_router(tags.router, prefix="/api")
     app.include_router(realtime.router)
 
     @app.get("/healthz")

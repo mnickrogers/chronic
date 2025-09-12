@@ -8,6 +8,9 @@ import TaskDetail from "@/components/TaskDetail";
 import UserPicker from "@/components/UserPicker";
 import UserBadge from "@/components/UserBadge";
 import { api } from "@/lib/api";
+import TagBadge from "@/components/TagBadge";
+import TagPicker from "@/components/TagPicker";
+import TagFilter from "@/components/TagFilter";
 
 export default function ProjectTasksPage() {
   return (
@@ -31,9 +34,14 @@ function ProjectTasksInner() {
   const [newTask, setNewTask] = useState('');
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [projectTags, setProjectTags] = useState<any[]>([]);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagsByTask, setTagsByTask] = useState<Record<string, any[]>>({});
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} })(); }, [id]);
+  useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} try{ const ids = (ts as any[]).map((t:any)=>t.id); const batch:any = ids.length ? await api.listTagsForTasks(ids) : {}; setTagsByTask(batch); } catch {} })(); }, [id]);
   useEffect(() => { if (!id || !workspaceId) return; (async()=>{ try { const prjs = await api.listProjects(workspaceId); setProject(prjs.find((p:any)=>p.id===id) || null); } catch {} })(); }, [id, workspaceId]);
+  useEffect(() => { if (!id) return; api.listProjectTags(id).then((ts:any)=>setProjectTags(ts)).catch(()=>{}); }, [id]);
   useEffect(() => { if (!id) return; api.listProjectMembers(id).then((ms:any)=>setMembers(ms.map((m:any)=>m.user))).catch(()=>{}); }, [id]);
 
   // WebSocket subscribe for live updates
@@ -41,18 +49,32 @@ function ProjectTasksInner() {
     if (!id) return;
     const ws = new WebSocket((process.env.NEXT_PUBLIC_WS_BASE || 'ws://localhost:8000') + '/ws');
     wsRef.current = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ subscribe: `project:${id}` }));
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ subscribe: `project:${id}` }));
+      if (workspaceId) ws.send(JSON.stringify({ subscribe: `workspace:${workspaceId}` }));
+    };
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
-      if (msg.type === 'task.created') { setTasks(prev => [msg.task, ...prev]); setAssigneesByTask(prev=>({ ...prev, [msg.task.id]: [] })); }
+      if (msg.type === 'task.created') { setTasks(prev => [msg.task, ...prev]); setAssigneesByTask(prev=>({ ...prev, [msg.task.id]: [] })); setTagsByTask(prev=>({ ...prev, [msg.task.id]: [] })); }
       if (msg.type === 'task.updated') setTasks(prev => prev.map(t => t.id === msg.task.id ? msg.task : t));
-      if (msg.type === 'task.deleted') { setTasks(prev => prev.filter(t => t.id !== msg.id)); setAssigneesByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); }
+      if (msg.type === 'task.deleted') { setTasks(prev => prev.filter(t => t.id !== msg.id)); setAssigneesByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); setTagsByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); }
+      if (msg.type === 'project.tag.added') setProjectTags(prev => {
+        if (prev.some((t:any)=>t.id===msg.tag.id)) return prev;
+        return [...prev, msg.tag];
+      });
+      if (msg.type === 'project.tag.removed') setProjectTags(prev => prev.filter((t:any)=>t.id!==msg.id));
+      if (msg.type === 'tag.updated') setProjectTags(prev => prev.map((t:any)=> t.id===msg.tag.id ? msg.tag : t));
+      if (msg.type === 'tag.deleted') setProjectTags(prev => prev.filter((t:any)=> t.id !== msg.id));
       if (msg.type === 'project.deleted') { try { router.push('/projects'); } catch {} }
     };
     return () => { try { ws.close(); } catch {} };
-  }, [id]);
+  }, [id, workspaceId]);
 
   const statusesById = useMemo(() => Object.fromEntries(statuses.map(s=>[s.id, s])), [statuses]);
+  const filteredTasks = useMemo(() => {
+    if (selectedTags.length === 0) return tasks;
+    return tasks.filter(t => (tagsByTask[t.id]||[]).some((tg:any)=> selectedTags.includes(tg.id)));
+  }, [tasks, tagsByTask, selectedTags]);
 
   const create = async () => {
     if (!newTask) return;
@@ -150,11 +172,39 @@ function ProjectTasksInner() {
         </div>
       </div>
 
+      <div className="frame p-3 bg-[#2B2B31] mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm opacity-80">Project tags</div>
+          <div className="relative">
+            <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add</button>
+            {tagPickerOpen && (
+              <div className="absolute right-0 z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
+                <TagPicker onSelect={async (tag)=>{ try { await api.addProjectTag(id, tag.id); const ts = await api.listProjectTags(id); setProjectTags(ts as any[]); } catch {} setTagPickerOpen(false); }} />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {projectTags.length === 0 && <div className="text-sm opacity-70">No tags yet</div>}
+          {projectTags.map(t => (
+            <TagBadge key={t.id} name={t.name} color={t.color} onRemove={async()=>{ try{ await api.removeProjectTag(id, t.id); setProjectTags(prev=>prev.filter(x=>x.id!==t.id)); } catch {} }} />
+          ))}
+        </div>
+      </div>
+
+      <TagFilter
+        tags={projectTags as any}
+        selected={selectedTags}
+        onToggle={(id)=> setSelectedTags(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id])}
+        onClear={()=> setSelectedTags([])}
+      />
+
       <TaskList
-        tasks={tasks}
+        tasks={filteredTasks}
         projectsById={project? { [project.id]: project }: {} as any}
         statusesById={statusesById}
         assigneesByTask={assigneesByTask}
+        tagsByTask={tagsByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
       />
@@ -166,6 +216,7 @@ function ProjectTasksInner() {
           status={openTask.status_id ? statusesById[openTask.status_id] : undefined}
           onClose={()=>setOpenTask(null)}
           onChange={(u)=>{ setTasks(prev=>prev.map(x=>x.id===u.id? (u as any): x)); setOpenTask(u as any); }}
+          onTagsChanged={(taskId, tagList)=> setTagsByTask(prev=>({ ...prev, [taskId]: tagList }))}
           onAssigneesChanged={(taskId, users)=> setAssigneesByTask(prev=>({ ...prev, [taskId]: users }))}
           onDelete={(id)=>{ setTasks(prev => prev.filter(t => t.id !== id)); setAssigneesByTask(prev=>{ const { [id]:_, ...rest } = prev; return rest; }); setOpenTask(null); }}
           projects={project? [project] : []}

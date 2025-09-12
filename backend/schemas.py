@@ -147,3 +147,28 @@ class TaskAssigneeAddIn(BaseModel):
 class TaskAssigneeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     user: UserOut
+
+
+# Tags
+class TagOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    color: Optional[str]
+    workspace_id: str
+    org_id: str
+    created_at: datetime
+
+
+class TagCreateIn(BaseModel):
+    name: str
+    color: Optional[str] = None
+
+
+class TagUpdateIn(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
+class TaskTagsBatchIn(BaseModel):
+    task_ids: List[str]
