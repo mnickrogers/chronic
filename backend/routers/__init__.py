@@ -1,4 +1,4 @@
-from . import auth, orgs, projects, tasks, comments, realtime
+from . import auth, orgs, projects, tasks, comments, realtime, tags
 
 __all__ = [
     "auth",
@@ -7,4 +7,5 @@ __all__ = [
     "tasks",
     "comments",
     "realtime",
+    "tags",
 ]

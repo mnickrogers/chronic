@@ -4,8 +4,8 @@ from sqlalchemy import select
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership
-from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut
+from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership, Tag, TaskTag
+from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut, TagOut
 from ..realtime import manager
 
 
@@ -246,6 +246,60 @@ def remove_task_assignee(task_id: str, user_id: str, db: Session = Depends(get_d
     assoc = db.execute(select(TaskAssignee).where(TaskAssignee.task_id == task_id, TaskAssignee.user_id == user_id)).scalar_one_or_none()
     if not assoc:
         raise HTTPException(status_code=404, detail="Assignee not found")
+    db.delete(assoc)
+    db.commit()
+    return {"ok": True}
+
+
+# ----- Task Tags -----
+
+@router.get("/{task_id}/tags", response_model=list[TagOut])
+def list_task_tags(task_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    joins = db.execute(select(TaskTag).where(TaskTag.task_id == task_id)).scalars().all()
+    tags: list[Tag] = []
+    for j in joins:
+        t = db.get(Tag, j.tag_id)
+        if t:
+            tags.append(t)
+    return tags
+
+
+@router.post("/{task_id}/tags", response_model=list[TagOut])
+def add_task_tag(task_id: str, body: dict, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    tag_id = body.get("tag_id")
+    if not tag_id:
+        raise HTTPException(status_code=400, detail="tag_id required")
+    tag = db.get(Tag, tag_id)
+    if not tag or tag.org_id != org.id or tag.workspace_id != task.workspace_id:
+        raise HTTPException(status_code=404, detail="Tag not found in this workspace")
+    existing = db.execute(select(TaskTag).where(TaskTag.task_id == task.id, TaskTag.tag_id == tag.id)).scalar_one_or_none()
+    if not existing:
+        db.add(TaskTag(task_id=task.id, tag_id=tag.id))
+        db.commit()
+    # return list
+    joins = db.execute(select(TaskTag).where(TaskTag.task_id == task.id)).scalars().all()
+    out: list[Tag] = []
+    for j in joins:
+        t = db.get(Tag, j.tag_id)
+        if t:
+            out.append(t)
+    return out
+
+
+@router.delete("/{task_id}/tags/{tag_id}")
+def remove_task_tag(task_id: str, tag_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    task = db.get(Task, task_id)
+    if not task or task.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+    assoc = db.execute(select(TaskTag).where(TaskTag.task_id == task.id, TaskTag.tag_id == tag_id)).scalar_one_or_none()
+    if not assoc:
+        raise HTTPException(status_code=404, detail="Tag not attached")
     db.delete(assoc)
     db.commit()
     return {"ok": True}

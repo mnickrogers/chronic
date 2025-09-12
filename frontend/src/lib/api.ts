@@ -41,4 +41,15 @@ export const api = {
   listTaskAssignees: (taskId: string) => request(`/tasks/${taskId}/assignees`),
   addTaskAssignee: (taskId: string, user_id: string) => request(`/tasks/${taskId}/assignees`, { method: 'POST', body: { user_id } }),
   removeTaskAssignee: (taskId: string, userId: string) => request(`/tasks/${taskId}/assignees/${userId}`, { method: 'DELETE' }),
+  // Tags
+  listTags: (workspaceId: string) => request(`/tags/workspace/${workspaceId}`),
+  createTag: (workspaceId: string, name: string, color?: string) => request(`/tags/workspace/${workspaceId}`, { method: 'POST', body: { name, color } }),
+  updateTag: (tagId: string, body: any) => request(`/tags/${tagId}`, { method: 'PATCH', body }),
+  deleteTag: (tagId: string) => request(`/tags/${tagId}` , { method: 'DELETE' }),
+  listTaskTags: (taskId: string) => request(`/tasks/${taskId}/tags`),
+  addTaskTag: (taskId: string, tag_id: string) => request(`/tasks/${taskId}/tags`, { method: 'POST', body: { tag_id } }),
+  removeTaskTag: (taskId: string, tagId: string) => request(`/tasks/${taskId}/tags/${tagId}`, { method: 'DELETE' }),
+  listProjectTags: (projectId: string) => request(`/projects/${projectId}/tags`),
+  addProjectTag: (projectId: string, tag_id: string) => request(`/projects/${projectId}/tags`, { method: 'POST', body: { tag_id } }),
+  removeProjectTag: (projectId: string, tagId: string) => request(`/projects/${projectId}/tags/${tagId}`, { method: 'DELETE' }),
 };

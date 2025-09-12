@@ -8,6 +8,8 @@ import TaskDetail from "@/components/TaskDetail";
 import UserPicker from "@/components/UserPicker";
 import UserBadge from "@/components/UserBadge";
 import { api } from "@/lib/api";
+import TagBadge from "@/components/TagBadge";
+import TagPicker from "@/components/TagPicker";
 
 export default function ProjectTasksPage() {
   return (
@@ -31,9 +33,12 @@ function ProjectTasksInner() {
   const [newTask, setNewTask] = useState('');
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [projectTags, setProjectTags] = useState<any[]>([]);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} })(); }, [id]);
   useEffect(() => { if (!id || !workspaceId) return; (async()=>{ try { const prjs = await api.listProjects(workspaceId); setProject(prjs.find((p:any)=>p.id===id) || null); } catch {} })(); }, [id, workspaceId]);
+  useEffect(() => { if (!id) return; api.listProjectTags(id).then((ts:any)=>setProjectTags(ts)).catch(()=>{}); }, [id]);
   useEffect(() => { if (!id) return; api.listProjectMembers(id).then((ms:any)=>setMembers(ms.map((m:any)=>m.user))).catch(()=>{}); }, [id]);
 
   // WebSocket subscribe for live updates
@@ -147,6 +152,26 @@ function ProjectTasksInner() {
         <div className="flex gap-2 items-center">
           <input className="input flex-1" placeholder="Quick add task…" value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') create(); }} />
           <button className="button" onClick={create}>Add</button>
+        </div>
+      </div>
+
+      <div className="frame p-3 bg-[#2B2B31] mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm opacity-80">Project tags</div>
+          <div className="relative">
+            <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add</button>
+            {tagPickerOpen && (
+              <div className="absolute right-0 z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
+                <TagPicker onSelect={async (tag)=>{ try { await api.addProjectTag(id, tag.id); const ts = await api.listProjectTags(id); setProjectTags(ts as any[]); } catch {} setTagPickerOpen(false); }} />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {projectTags.length === 0 && <div className="text-sm opacity-70">No tags yet</div>}
+          {projectTags.map(t => (
+            <TagBadge key={t.id} name={t.name} color={t.color} onRemove={async()=>{ try{ await api.removeProjectTag(id, t.id); setProjectTags(prev=>prev.filter(x=>x.id!==t.id)); } catch {} }} />
+          ))}
         </div>
       </div>
 

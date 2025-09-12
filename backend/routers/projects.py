@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Project, Workspace, ProjectStatus, ProjectMembership, WorkspaceMembership, User
-from ..schemas import ProjectCreateIn, ProjectOut, ProjectStatusOut, ProjectMemberOut, ProjectMemberAddIn, UserOut
+from ..models import Project, Workspace, ProjectStatus, ProjectMembership, WorkspaceMembership, User, Tag, ProjectTag
+from ..schemas import ProjectCreateIn, ProjectOut, ProjectStatusOut, ProjectMemberOut, ProjectMemberAddIn, UserOut, TagOut
 from ..realtime import manager
 
 
@@ -114,6 +114,59 @@ def remove_project_member(project_id: str, user_id: str, db: Session = Depends(g
     if not mem:
         raise HTTPException(status_code=404, detail="Membership not found")
     db.delete(mem)
+    db.commit()
+    return {"ok": True}
+
+
+# ----- Project Tags -----
+
+@router.get("/{project_id}/tags", response_model=list[TagOut])
+def list_project_tags(project_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    prj = db.get(Project, project_id)
+    if not prj or prj.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    joins = db.execute(select(ProjectTag).where(ProjectTag.project_id == project_id)).scalars().all()
+    tags: list[Tag] = []
+    for j in joins:
+        t = db.get(Tag, j.tag_id)
+        if t:
+            tags.append(t)
+    return tags
+
+
+@router.post("/{project_id}/tags", response_model=list[TagOut])
+def add_project_tag(project_id: str, body: dict, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    prj = db.get(Project, project_id)
+    if not prj or prj.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    tag_id = body.get("tag_id")
+    if not tag_id:
+        raise HTTPException(status_code=400, detail="tag_id required")
+    tag = db.get(Tag, tag_id)
+    if not tag or tag.org_id != org.id or tag.workspace_id != prj.workspace_id:
+        raise HTTPException(status_code=404, detail="Tag not found in this workspace")
+    existing = db.execute(select(ProjectTag).where(ProjectTag.project_id == project_id, ProjectTag.tag_id == tag.id)).scalar_one_or_none()
+    if not existing:
+        db.add(ProjectTag(project_id=project_id, tag_id=tag.id))
+        db.commit()
+    joins = db.execute(select(ProjectTag).where(ProjectTag.project_id == project_id)).scalars().all()
+    out: list[Tag] = []
+    for j in joins:
+        t = db.get(Tag, j.tag_id)
+        if t:
+            out.append(t)
+    return out
+
+
+@router.delete("/{project_id}/tags/{tag_id}")
+def remove_project_tag(project_id: str, tag_id: str, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    prj = db.get(Project, project_id)
+    if not prj or prj.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    assoc = db.execute(select(ProjectTag).where(ProjectTag.project_id == project_id, ProjectTag.tag_id == tag_id)).scalar_one_or_none()
+    if not assoc:
+        raise HTTPException(status_code=404, detail="Tag not attached")
+    db.delete(assoc)
     db.commit()
     return {"ok": True}
 
