@@ -39,7 +39,7 @@ function ProjectTasksInner() {
   const [tagsByTask, setTagsByTask] = useState<Record<string, any[]>>({});
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} try{ const tagPairs = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskTags(t.id)])); setTagsByTask(Object.fromEntries(tagPairs)); } catch {} })(); }, [id]);
+  useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} try{ const ids = (ts as any[]).map((t:any)=>t.id); const batch:any = ids.length ? await api.listTagsForTasks(ids) : {}; setTagsByTask(batch); } catch {} })(); }, [id]);
   useEffect(() => { if (!id || !workspaceId) return; (async()=>{ try { const prjs = await api.listProjects(workspaceId); setProject(prjs.find((p:any)=>p.id===id) || null); } catch {} })(); }, [id, workspaceId]);
   useEffect(() => { if (!id) return; api.listProjectTags(id).then((ts:any)=>setProjectTags(ts)).catch(()=>{}); }, [id]);
   useEffect(() => { if (!id) return; api.listProjectMembers(id).then((ms:any)=>setMembers(ms.map((m:any)=>m.user))).catch(()=>{}); }, [id]);
@@ -194,6 +194,7 @@ function ProjectTasksInner() {
         projectsById={project? { [project.id]: project }: {} as any}
         statusesById={statusesById}
         assigneesByTask={assigneesByTask}
+        tagsByTask={tagsByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
       />

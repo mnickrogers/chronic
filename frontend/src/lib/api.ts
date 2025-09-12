@@ -49,6 +49,8 @@ export const api = {
   listTaskTags: (taskId: string) => request(`/tasks/${taskId}/tags`),
   addTaskTag: (taskId: string, tag_id: string) => request(`/tasks/${taskId}/tags`, { method: 'POST', body: { tag_id } }),
   removeTaskTag: (taskId: string, tagId: string) => request(`/tasks/${taskId}/tags/${tagId}`, { method: 'DELETE' }),
+  listTagsForTasks: (taskIds: string[]) => request(`/tasks/tags/batch`, { method: 'POST', body: { task_ids: taskIds } }),
+  searchTasksByTags: (workspaceId: string, tagIds: string[], mode: 'and'|'or'='and') => request(`/tasks/search?workspace_id=${encodeURIComponent(workspaceId)}&tag_ids=${encodeURIComponent(tagIds.join(','))}&mode=${mode}`),
   listProjectTags: (projectId: string) => request(`/projects/${projectId}/tags`),
   addProjectTag: (projectId: string, tag_id: string) => request(`/projects/${projectId}/tags`, { method: 'POST', body: { tag_id } }),
   removeProjectTag: (projectId: string, tagId: string) => request(`/projects/${projectId}/tags/${tagId}`, { method: 'DELETE' }),

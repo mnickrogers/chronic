@@ -51,8 +51,9 @@ function AllTasksInner() {
           setAssigneesByTask(Object.fromEntries(assigneeEntries));
         } catch {}
         try {
-          const tagEntries = await Promise.all((all as any[]).map(async (t:any)=> [t.id, await api.listTaskTags(t.id)]));
-          setTagsByTask(Object.fromEntries(tagEntries));
+          const ids = (all as any[]).map((t:any)=>t.id);
+          const batch = ids.length ? await api.listTagsForTasks(ids) as any : {};
+          setTagsByTask(batch);
         } catch {}
         try {
           setWorkspaceTags(await api.listTags(workspaceId) as any);
@@ -106,6 +107,7 @@ function AllTasksInner() {
         projectsById={projectsById}
         statusesById={statuses}
         assigneesByTask={assigneesByTask}
+        tagsByTask={tagsByTask}
         onToggleCompleted={(t,next)=>toggle(t,next)}
         onOpen={(t)=>setOpenTask(t)}
         onNew={createNew}

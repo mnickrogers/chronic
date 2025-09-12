@@ -1,6 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { api } from "@/lib/api";
+import TagBadge from "@/components/TagBadge";
 
 export type Task = {
   id: string;
@@ -15,19 +16,21 @@ export type Task = {
 export type Project = { id: string; name: string };
 export type Status = { id: string; label: string; is_done: boolean };
 export type User = { id: string; email: string; display_name: string };
+export type Tag = { id: string; name: string; color?: string | null };
 
 export type TaskListProps = {
   tasks: Task[];
   projectsById?: Record<string, Project>;
   statusesById?: Record<string, Status>;
   assigneesByTask?: Record<string, User[]>;
+  tagsByTask?: Record<string, Tag[]>;
   onToggleCompleted?: (task: Task, next: boolean) => void;
   onOpen?: (task: Task) => void;
   onNew?: () => void;
   newDisabled?: boolean;
 };
 
-export default function TaskList({ tasks, projectsById={}, statusesById={}, assigneesByTask={}, onToggleCompleted, onOpen, onNew, newDisabled }: TaskListProps) {
+export default function TaskList({ tasks, projectsById={}, statusesById={}, assigneesByTask={}, tagsByTask={}, onToggleCompleted, onOpen, onNew, newDisabled }: TaskListProps) {
   const grouped = useMemo(() => groupByDue(tasks), [tasks]);
   const sections = ["Today", "This Week", "This Month", "Later", "No Date"] as const;
   return (
@@ -45,6 +48,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
                 project={projectsById[t.project_id || '']}
                 status={t.status_id ? statusesById[t.status_id] : undefined}
                 assignees={assigneesByTask?.[t.id] || []}
+                tags={tagsByTask?.[t.id] || []}
                 onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
                 onOpen={()=>onOpen?.(t)}
               />
@@ -56,7 +60,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
   );
 }
 
-function TaskRow({ task, project, status, assignees, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
+function TaskRow({ task, project, status, assignees, tags, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], tags?: Tag[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
   return (
     <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[#222227]" onClick={onOpen}>
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
@@ -64,6 +68,14 @@ function TaskRow({ task, project, status, assignees, onToggleCompleted, onOpen }
       </div>
       <div className="flex-1 text-sm ml-4">
         <div className={`${task.is_completed? 'line-through opacity-60': ''}`}>{task.name}</div>
+      </div>
+      <div className="hidden md:flex items-center gap-1 max-w-[220px] justify-end">
+        {(tags||[]).slice(0,2).map(t => (
+          <TagBadge key={t.id} name={t.name} color={t.color} />
+        ))}
+        {(tags&&tags.length>2) ? (
+          <span className="text-xs opacity-70">+{tags.length-2}</span>
+        ) : null}
       </div>
       <div className="text-xs opacity-70 w-[110px] text-right tabular-nums">
         {formatDueLabel(task.due_date)}

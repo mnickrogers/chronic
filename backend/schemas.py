@@ -168,3 +168,7 @@ class TagCreateIn(BaseModel):
 class TagUpdateIn(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
+
+
+class TaskTagsBatchIn(BaseModel):
+    task_ids: List[str]

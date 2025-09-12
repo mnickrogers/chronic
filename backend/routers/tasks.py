@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
 from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership, Tag, TaskTag
-from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut, TagOut
+from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut, TagOut, TaskTagsBatchIn
 from ..realtime import manager
 
 
@@ -303,3 +303,49 @@ def remove_task_tag(task_id: str, tag_id: str, db: Session = Depends(get_db), or
     db.delete(assoc)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/tags/batch", response_model=dict[str, list[TagOut]])
+def list_tags_for_tasks(body: TaskTagsBatchIn, db: Session = Depends(get_db), org=Depends(get_current_org)):
+    if not body.task_ids:
+        return {}
+    # Fetch tasks to enforce org scope
+    tasks = db.execute(select(Task.id, Task.org_id).where(Task.id.in_(body.task_ids))).all()
+    allowed_ids = {tid for (tid, o) in tasks if o == org.id}
+    if not allowed_ids:
+        return {}
+    joins = db.execute(select(TaskTag).where(TaskTag.task_id.in_(allowed_ids))).scalars().all()
+    tag_ids = {j.tag_id for j in joins}
+    tags = db.execute(select(Tag).where(Tag.id.in_(tag_ids))).scalars().all() if tag_ids else []
+    tags_by_id = {t.id: t for t in tags}
+    out: dict[str, list[Tag]] = {tid: [] for tid in allowed_ids}
+    for j in joins:
+        t = tags_by_id.get(j.tag_id)
+        if t:
+            out[j.task_id].append(t)
+    return out
+
+
+@router.get("/search", response_model=list[TaskOut])
+def search_tasks_by_tags(
+    workspace_id: str,
+    tag_ids: str | None = None,  # comma-separated
+    mode: str = "and",  # 'and' or 'or'
+    db: Session = Depends(get_db),
+    org=Depends(get_current_org),
+):
+    # Ensure workspace belongs to org
+    ws = db.get(Workspace, workspace_id)
+    if not ws or ws.org_id != org.id:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    ids = [x for x in (tag_ids.split(',') if tag_ids else []) if x]
+    base = select(Task).where(Task.workspace_id == workspace_id)
+    if not ids:
+        return db.execute(base.order_by(Task.created_at.desc())).scalars().all()
+    jt = select(Task.id.label('tid')).join_from(Task, TaskTag, Task.id == TaskTag.task_id).where(Task.workspace_id == workspace_id, TaskTag.tag_id.in_(ids)).group_by(Task.id)
+    if mode.lower() == 'and':
+        jt = jt.having(func.count(func.distinct(TaskTag.tag_id)) == len(ids))
+    # Join to tasks from subquery
+    q = select(Task).join(jt.subquery(), jt.subquery().c.tid == Task.id).order_by(Task.created_at.desc())
+    items = db.execute(q).scalars().all()
+    return items
