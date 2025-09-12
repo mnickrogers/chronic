@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import TagBadge from "@/components/TagBadge";
 import { formatDueLabel } from "@/components/TaskList";
 
@@ -34,19 +34,72 @@ export type TaskBoardProps = {
 };
 
 export default function TaskBoard({ tasks, projectsById={}, statusesById={}, statusOrder, assigneesByTask={}, tagsByTask={}, onOpen, onToggleCompleted, onDrop, onCreateInStatus, newDisabled }: TaskBoardProps) {
-  const { columns, order, unknownId } = useMemo(() => buildColumns(tasks, statusesById, statusOrder), [tasks, statusesById, statusOrder]);
+  const { columns, order, unknownId, statusForTask } = useMemo(() => buildColumns(tasks, statusesById, statusOrder), [tasks, statusesById, statusOrder]);
+  const [dragging, setDragging] = useState<{ taskId: string; fromColId: string } | null>(null);
+  const [dragOver, setDragOver] = useState<{ colId: string; targetId?: string; pos: 'before'|'after'|'end' } | null>(null);
+  const [orderByCol, setOrderByCol] = useState<Record<string, string[]>>({});
+
+  const tasksById = useMemo(() => Object.fromEntries(tasks.map(t=>[t.id, t])), [tasks]);
+
+  const sortTasksForColumn = (colId: string, items: Task[]) => {
+    const manual = orderByCol[colId] || [];
+    const manualSet = new Set(manual);
+    const manualTasks = manual.map(id => tasksById[id]).filter(Boolean) as Task[];
+    const remaining = items.filter(t => !manualSet.has(t.id)).sort((a,b) => {
+      if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
+      const ad = a.due_date ? new Date(a.due_date) : null;
+      const bd = b.due_date ? new Date(b.due_date) : null;
+      if (ad && bd) return ad.getTime() - bd.getTime();
+      if (ad && !bd) return -1;
+      if (!ad && bd) return 1;
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.name.localeCompare(b.name);
+    });
+    return [...manualTasks, ...remaining];
+  };
+
+  const moveInState = (taskId: string, fromCol: string, toCol: string, beforeId?: string) => {
+    setOrderByCol(prev => {
+      const next = { ...prev } as Record<string, string[]>;
+      const removeFrom = (col: string) => {
+        const arr = next[col];
+        if (!arr) return;
+        next[col] = arr.filter(id => id !== taskId);
+      };
+      removeFrom(fromCol);
+      if (!next[toCol]) next[toCol] = [];
+      const target = next[toCol];
+      if (beforeId && target.includes(beforeId)) {
+        const idx = target.indexOf(beforeId);
+        next[toCol] = [...target.slice(0, idx), taskId, ...target.slice(idx)];
+      } else {
+        next[toCol] = [...target, taskId];
+      }
+      return next;
+    });
+  };
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${order.length}, minmax(220px, 1fr))` }}>
-      {order.map((colId) => (
-        <div key={colId} className="frame bg-[#2B2B31] flex flex-col max-h-[70vh]"
-          onDragOver={(e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+      {order.map((colId) => {
+        const items = sortTasksForColumn(colId, columns[colId].tasks);
+        const showColActive = dragOver?.colId === colId && dragOver?.pos === 'end';
+        return (
+        <div key={colId} className={`frame bg-[#2B2B31] flex flex-col max-h-[70vh] ${showColActive? 'border-[var(--accent)]': ''}`}
+          onDragOver={(e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(prev => prev?.colId===colId && prev?.pos==='end' ? prev : { colId, pos: 'end' }); }}
           onDrop={(e)=>{
             e.preventDefault();
             try {
               const raw = e.dataTransfer.getData('application/json');
               const data = JSON.parse(raw || '{}');
-              if (data && data.taskId && onDrop) onDrop(data.taskId as string, colId === unknownId ? null : colId);
+              const taskId = data?.taskId as string | undefined;
+              if (taskId) {
+                const dest = colId === unknownId ? null : colId;
+                moveInState(taskId, data.fromColId || statusForTask(taskId) || unknownId, colId);
+                onDrop?.(taskId, dest);
+              }
             } catch {}
+            setDragOver(null);
+            setDragging(null);
           }}
         >
           <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45] sticky top-0 bg-[#2B2B31] z-10 flex items-center justify-between">
@@ -61,16 +114,37 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
             </button>
           </div>
           <div className="p-2 overflow-auto space-y-2 min-h-[40px]">
-            {columns[colId].tasks.length === 0 ? (
+            {items.length === 0 ? (
               <div className="text-sm opacity-60 px-1">No tasks</div>
             ) : (
-              columns[colId].tasks.map((t) => (
+              items.map((t, idx) => (
                 <TaskCard
                   key={t.id}
                   task={t}
                   project={projectsById[t.project_id || '']}
                   tags={tagsByTask?.[t.id] || []}
                   assignees={assigneesByTask?.[t.id] || []}
+                  columnId={colId}
+                  draggingId={dragging?.taskId}
+                  dragOverInfo={dragOver}
+                  onDragStart={(task)=> setDragging({ taskId: task.id, fromColId: colId })}
+                  onDragOverCard={(targetId, pos)=> setDragOver({ colId, targetId, pos })}
+                  onDropOnCard={(targetId, pos)=>{
+                    const taskId = dragging?.taskId;
+                    if (!taskId) return;
+                    let beforeId: string | undefined = undefined;
+                    if (pos === 'before') {
+                      beforeId = targetId;
+                    } else {
+                      const i = items.findIndex(x=>x.id===targetId);
+                      if (i >= 0 && i+1 < items.length) beforeId = items[i+1].id;
+                    }
+                    moveInState(taskId, dragging?.fromColId || statusForTask(taskId) || unknownId, colId, beforeId);
+                    const dest = colId === unknownId ? null : colId;
+                    onDrop?.(taskId, dest);
+                    setDragOver(null);
+                    setDragging(null);
+                  }}
                   onOpen={()=>onOpen?.(t)}
                   onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
                 />
@@ -78,7 +152,7 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
             )}
           </div>
         </div>
-      ))}
+      );})}
     </div>
   );
 }
@@ -122,7 +196,13 @@ function buildColumns(
   for (const sid of order) {
     columns[sid] = { label: columnLabels[sid] || "", tasks: byStatus[sid] || [] } as any;
   }
-  return { columns, order, unknownId } as const;
+  const statusForTask = (taskId: string) => {
+    const t = tasks.find(x=>x.id===taskId);
+    if (!t) return unknownId;
+    const sid = (t.status_id && statusesById[t.status_id]) ? (t.status_id as string) : unknownId;
+    return sid;
+  };
+  return { columns, order, unknownId, statusForTask } as const;
 }
 
 function handleFor(u: User) {
@@ -130,15 +210,32 @@ function handleFor(u: User) {
   return `@${local}`;
 }
 
-function TaskCard({ task, project, tags, assignees, onOpen, onToggleCompleted }:{ task: Task, project?: Project, tags?: Tag[], assignees?: User[], onOpen?: ()=>void, onToggleCompleted?: (next:boolean)=>void }){
+function TaskCard({ task, project, tags, assignees, columnId, draggingId, dragOverInfo, onDragStart, onDragOverCard, onDropOnCard, onOpen, onToggleCompleted }:{ task: Task, project?: Project, tags?: Tag[], assignees?: User[], columnId: string, draggingId?: string|null, dragOverInfo?: { colId: string; targetId?: string; pos: 'before'|'after'|'end' } | null, onDragStart: (t: Task) => void, onDragOverCard: (targetId: string, pos: 'before'|'after') => void, onDropOnCard: (targetId: string, pos: 'before'|'after') => void, onOpen?: ()=>void, onToggleCompleted?: (next:boolean)=>void }){
+  const isDragging = draggingId === task.id;
+  const showBefore = dragOverInfo && dragOverInfo.colId === columnId && dragOverInfo.targetId === task.id && dragOverInfo.pos === 'before';
+  const showAfter = dragOverInfo && dragOverInfo.colId === columnId && dragOverInfo.targetId === task.id && dragOverInfo.pos === 'after';
   return (
     <div
-      className="border border-[var(--stroke)] bg-[#1F1F23] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)]"
+      className={`border border-[var(--stroke)] bg-[#1F1F23] rounded-sm p-2 cursor-pointer hover:border-[var(--accent)] ${isDragging? 'opacity-70 rotate-[0.5deg]': ''} ${showBefore? 'shadow-[0_-2px_0_#8B5CF6_inset]': ''} ${showAfter? 'shadow-[0_2px_0_#8B5CF6_inset]': ''}`}
       onClick={onOpen}
       draggable
       onDragStart={(e)=>{
-        try { e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, fromStatusId: task.status_id ?? null })); } catch {}
+        try { e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, fromColId: columnId })); } catch {}
         e.dataTransfer.effectAllowed = 'move';
+        onDragStart(task);
+      }}
+      onDragEnd={()=>{ /* clear via drop handlers */ }}
+      onDragOver={(e)=>{
+        e.preventDefault();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const pos = e.clientY < rect.top + rect.height/2 ? 'before' : 'after';
+        onDragOverCard(task.id, pos);
+      }}
+      onDrop={(e)=>{
+        e.preventDefault();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const pos = e.clientY < rect.top + rect.height/2 ? 'before' : 'after';
+        onDropOnCard(task.id, pos);
       }}
     >
       <div className="flex items-start gap-2">
