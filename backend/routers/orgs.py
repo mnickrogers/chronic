@@ -75,7 +75,17 @@ def add_workspace_member(
         user = db.execute(select(User).where(User.email == data.email.lower())).scalar_one_or_none()
         if not user:
             display_name = data.display_name or (data.email.split("@")[0])
-            user = User(email=data.email.lower(), password_hash=hash_password("invite-" + workspace_id), display_name=display_name)
+            # Best-effort split
+            parts = [p for p in display_name.split(' ') if p]
+            first = parts[0] if parts else display_name
+            last = ' '.join(parts[1:]) if len(parts) > 1 else None
+            user = User(
+                email=data.email.lower(),
+                password_hash=hash_password("invite-" + workspace_id),
+                first_name=first,
+                last_name=last,
+                display_name=display_name,
+            )
             db.add(user)
             db.flush()
 

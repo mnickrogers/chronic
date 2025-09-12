@@ -160,4 +160,3 @@ def downgrade() -> None:
     op.drop_table('org_memberships')
     op.drop_table('organizations')
     op.drop_table('users')
-

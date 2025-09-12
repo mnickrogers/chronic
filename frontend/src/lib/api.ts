@@ -15,8 +15,9 @@ async function request<T>(path: string, opts: { method?: HTTPMethod, body?: any 
 
 export const api = {
   me: () => request('/auth/me'),
+  updateMe: (body: { first_name?: string, last_name?: string }) => request('/auth/me', { method: 'PATCH', body }),
   login: (email: string, password: string) => request('/auth/login', { method: 'POST', body: { email, password } }),
-  signup: (email: string, password: string, display_name: string) => request('/auth/signup', { method: 'POST', body: { email, password, display_name } }),
+  signup: (email: string, password: string, first_name: string, last_name: string) => request('/auth/signup', { method: 'POST', body: { email, password, first_name, last_name } }),
   listWorkspaces: () => request('/orgs/current/workspaces'),
   createWorkspace: (name: string) => request('/orgs/current/workspaces', { method: 'POST', body: { name } }),
   listProjects: (workspaceId: string) => request(`/projects/workspace/${workspaceId}`),
