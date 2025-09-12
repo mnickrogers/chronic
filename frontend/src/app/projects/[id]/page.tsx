@@ -89,7 +89,18 @@ function ProjectTasksInner() {
   };
 
   const toggle = async (t: Task, next: boolean) => {
-    const updated = await api.updateTask(t.id, { is_completed: next });
+    const body: any = { is_completed: next };
+    if (next) {
+      const doneId = statuses.find(s=>s.is_done)?.id;
+      if (doneId) body.status_id = doneId;
+    } else {
+      const isInDone = t.status_id ? !!statusesById[t.status_id]?.is_done : false;
+      if (isInDone) {
+        const targetId = statuses.find(s=>!s.is_done)?.id || null;
+        body.status_id = targetId;
+      }
+    }
+    const updated = await api.updateTask(t.id, body);
     setTasks(prev=>prev.map(x=>x.id===t.id? (updated as any): x));
   };
 
@@ -103,6 +114,10 @@ function ProjectTasksInner() {
   const createInStatus = async (statusId: string | null) => {
     try {
       const t:any = await api.createTask(id, 'Untitled Task', statusId || undefined);
+      if (statusId && (statusesById[statusId]?.is_done)) {
+        const u:any = await api.updateTask(t.id, { is_completed: true });
+        Object.assign(t, u);
+      }
       setTasks(prev=>[t, ...prev]);
       setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
       setOpenTask(t);
@@ -111,7 +126,9 @@ function ProjectTasksInner() {
 
   const onDrop = async (taskId: string, toStatusId: string | null) => {
     try {
-      const updated:any = await api.updateTask(taskId, { status_id: toStatusId });
+      const body:any = { status_id: toStatusId };
+      body.is_completed = !!(toStatusId && statusesById[toStatusId]?.is_done);
+      const updated:any = await api.updateTask(taskId, body);
       setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
     } catch {}
   };

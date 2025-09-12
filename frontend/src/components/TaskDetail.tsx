@@ -154,7 +154,10 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
               value={task.status_id || ''}
               onChange={async (e)=>{
                 const val = e.target.value || null;
-                const updated = await api.updateTask(task.id, { status_id: val });
+                // If choosing a "done" status, also mark complete
+                const isDone = (task.project_id ? (statusesByProject?.[task.project_id] || []) : (DEFAULT_STATUSES as any)).some((s:any)=> s.id === val && s.is_done);
+                const body:any = { status_id: val, is_completed: isDone };
+                const updated = await api.updateTask(task.id, body);
                 onChange?.(updated as any);
               }}
             >

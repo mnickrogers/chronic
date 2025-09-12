@@ -98,7 +98,24 @@ function AllTasksInner() {
   }, [tasks, tagsByTask, selectedTags]);
 
   const toggle = async (t: Task, next: boolean) => {
-    const updated = await api.updateTask(t.id, { is_completed: next });
+    const body: any = { is_completed: next };
+    if (next) {
+      // Move to Done when completing
+      const doneId = t.project_id
+        ? (statusesByProject[t.project_id]?.find((s:any)=>s.is_done)?.id)
+        : (DEFAULT_STATUSES.find(s=>s.is_done)?.id);
+      if (doneId) body.status_id = doneId;
+    } else {
+      // Un-completing: if currently in a Done status, move to first non-done
+      const isInDone = t.status_id ? !!statuses[t.status_id]?.is_done : false;
+      if (isInDone) {
+        const targetId = t.project_id
+          ? (statusesByProject[t.project_id]?.find((s:any)=>!s.is_done)?.id || null)
+          : (DEFAULT_STATUSES.find(s=>!s.is_done)?.id || null);
+        body.status_id = targetId;
+      }
+    }
+    const updated = await api.updateTask(t.id, body);
     setTasks(prev=>prev.map(x=>x.id===t.id? (updated as any): x));
   };
 
@@ -118,12 +135,21 @@ function AllTasksInner() {
       const projectId = statusId ? statusIdToProjectId[statusId] : null;
       if (projectId) {
         const t:any = await api.createTask(projectId, 'Untitled Task', statusId || undefined);
+        // If created in a Done column, also mark complete
+        if (statusId && statuses[statusId]?.is_done) {
+          const u:any = await api.updateTask(t.id, { is_completed: true });
+          Object.assign(t, u);
+        }
         setTasks(prev=>[t, ...prev]);
         setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
         setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
         setOpenTask(t);
       } else {
         const t:any = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, statusId || undefined);
+        if (statusId && statuses[statusId]?.is_done) {
+          const u:any = await api.updateTask(t.id, { is_completed: true });
+          Object.assign(t, u);
+        }
         setTasks(prev=>[t, ...prev]);
         setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
         setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
@@ -147,6 +173,8 @@ function AllTasksInner() {
         // Default status → project-less task
         if (t.project_id) body.project_id = null;
       }
+      const isDoneDest = !!(toStatusId && statuses[toStatusId]?.is_done);
+      body.is_completed = isDoneDest;
       const updated:any = await api.updateTask(taskId, body);
       setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
     } catch {}

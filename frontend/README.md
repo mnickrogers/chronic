@@ -42,3 +42,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Your selection is saved to `localStorage` (`chronic:taskViewMode`) and applied across pages.
 - In Board view, drag tasks between columns to change their status. In All Tasks, dropping into another project's status moves the task to that project.
 - Use the `+` button in a column header to create a new task pre-set to that column's status.
+ - Completing a task automatically moves it to the `Done` status for its project (or the default `Done` if the task has no project). Setting a task’s status to a `Done` column also marks it complete.
