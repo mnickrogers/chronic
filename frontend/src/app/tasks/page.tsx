@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Project, Status } from "@/components/TaskList";
+import TaskBoard from "@/components/TaskBoard";
+import ViewToggle from "@/components/ViewToggle";
+import { useTaskViewMode } from "@/lib/view-mode";
 import TaskDetail from "@/components/TaskDetail";
 import { api } from "@/lib/api";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
@@ -27,6 +30,7 @@ function AllTasksInner() {
   const [workspaceTags, setWorkspaceTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const [viewMode, setViewMode] = useTaskViewMode();
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -105,7 +109,10 @@ function AllTasksInner() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-md">All Tasks</div>
+        <div className="flex items-center gap-3">
+          <div className="text-md">All Tasks</div>
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
+        </div>
         <button
           className={`button w-8 h-8 p-0 flex items-center justify-center ${!workspaceId ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={() => { if (workspaceId) createNew(); }}
@@ -122,17 +129,30 @@ function AllTasksInner() {
         onClear={()=> setSelectedTags([])}
       />
 
-      <TaskList
-        tasks={filteredTasks}
-        projectsById={projectsById}
-        statusesById={statuses}
-        assigneesByTask={assigneesByTask}
-        tagsByTask={tagsByTask}
-        onToggleCompleted={(t,next)=>toggle(t,next)}
-        onOpen={(t)=>setOpenTask(t)}
-        onNew={createNew}
-        newDisabled={!workspaceId}
-      />
+      {viewMode === 'list' ? (
+        <TaskList
+          tasks={filteredTasks}
+          projectsById={projectsById}
+          statusesById={statuses}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+          onNew={createNew}
+          newDisabled={!workspaceId}
+        />
+      ) : (
+        <TaskBoard
+          tasks={filteredTasks}
+          projectsById={projectsById}
+          statusesById={statuses}
+          statusOrder={['default:backlog','default:in_progress','default:blocked','default:done']}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+        />
+      )}
       {openTask && (
         <TaskDetail
           task={openTask}

@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Status } from "@/components/TaskList";
+import TaskBoard from "@/components/TaskBoard";
+import ViewToggle from "@/components/ViewToggle";
+import { useTaskViewMode } from "@/lib/view-mode";
 import TaskDetail from "@/components/TaskDetail";
 import UserPicker from "@/components/UserPicker";
 import UserBadge from "@/components/UserBadge";
@@ -38,6 +41,7 @@ function ProjectTasksInner() {
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [tagsByTask, setTagsByTask] = useState<Record<string, any[]>>({});
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useTaskViewMode();
 
   useEffect(() => { if (!id) return; (async()=>{ const ts:any = await api.listTasks(id); setTasks(ts); setStatuses(await api.getStatuses(id) as any); try{ const entries = await Promise.all((ts as any[]).map(async (t:any)=> [t.id, await api.listTaskAssignees(t.id)])); setAssigneesByTask(Object.fromEntries(entries)); } catch {} try{ const ids = (ts as any[]).map((t:any)=>t.id); const batch:any = ids.length ? await api.listTagsForTasks(ids) : {}; setTagsByTask(batch); } catch {} })(); }, [id]);
   useEffect(() => { if (!id || !workspaceId) return; (async()=>{ try { const prjs = await api.listProjects(workspaceId); setProject(prjs.find((p:any)=>p.id===id) || null); } catch {} })(); }, [id, workspaceId]);
@@ -99,9 +103,10 @@ function ProjectTasksInner() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3" onClick={()=>{ if(menuOpen) setMenuOpen(false); }}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link href="/projects" className="button">←</Link>
           <div className="text-md">{project?.name || 'Project'}</div>
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
         </div>
         <div className="relative flex items-center gap-2" onClick={(e)=>e.stopPropagation()}>
           <button className="button w-8 h-8 p-0 flex items-center justify-center" onClick={createNew} title="New task">+</button>
@@ -199,15 +204,28 @@ function ProjectTasksInner() {
         onClear={()=> setSelectedTags([])}
       />
 
-      <TaskList
-        tasks={filteredTasks}
-        projectsById={project? { [project.id]: project }: {} as any}
-        statusesById={statusesById}
-        assigneesByTask={assigneesByTask}
-        tagsByTask={tagsByTask}
-        onToggleCompleted={(t,next)=>toggle(t,next)}
-        onOpen={(t)=>setOpenTask(t)}
-      />
+      {viewMode === 'list' ? (
+        <TaskList
+          tasks={filteredTasks}
+          projectsById={project? { [project.id]: project }: {} as any}
+          statusesById={statusesById}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+        />
+      ) : (
+        <TaskBoard
+          tasks={filteredTasks}
+          projectsById={project? { [project.id]: project }: {} as any}
+          statusesById={statusesById}
+          statusOrder={statuses.map(s=>s.id)}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+        />
+      )}
 
       {openTask && (
         <TaskDetail
