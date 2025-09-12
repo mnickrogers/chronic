@@ -190,11 +190,14 @@ class Tag(Base):
     org_id: Mapped[str] = mapped_column(String)
     workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(64))
+    # Lowercased version for case-insensitive uniqueness
+    name_norm: Mapped[str] = mapped_column(String(64))
     color: Mapped[Optional[str]] = mapped_column(String(16), default="#6B7280")  # gray-500
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "name", name="uq_ws_tag_name"),
+        UniqueConstraint("workspace_id", "name_norm", name="uq_ws_tag_name_norm"),
     )
 
 

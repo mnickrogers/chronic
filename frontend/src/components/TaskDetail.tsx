@@ -9,7 +9,7 @@ import { useCurrentWorkspace } from "@/components/AppShell";
 import TagPicker from "@/components/TagPicker";
 import TagBadge from "@/components/TagBadge";
 
-export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, onDelete, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, onDelete?: (taskId: string) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
+export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, onTagsChanged, onDelete, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, onTagsChanged?: (taskId: string, tags: any[]) => void, onDelete?: (taskId: string) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
   const [due, setDue] = useState<string | ''>(task.due_date || '');
   const [comments, setComments] = useState<any[]>([]);
@@ -25,7 +25,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
   useEffect(() => { (async () => { try { const res = await fetch(`${API_BASE}/comments/task/${task.id}`, { credentials: 'include' }); if(res.ok) setComments(await res.json()); } catch {} })(); }, [task.id]);
   useEffect(() => { (async () => { try { const users = await api.listTaskAssignees(task.id); setAssignees(users as any[]); onAssigneesChanged?.(task.id, users as any[]); } catch {} })(); }, [task.id]);
-  useEffect(() => { (async () => { try { const ts = await api.listTaskTags(task.id); setTags(ts as any[]); } catch {} })(); }, [task.id]);
+  useEffect(() => { (async () => { try { const ts = await api.listTaskTags(task.id); setTags(ts as any[]); onTagsChanged?.(task.id, ts as any[]); } catch {} })(); }, [task.id]);
 
   const saveMeta = async () => {
     try {
@@ -127,13 +127,13 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
             <div className="flex items-center gap-2 flex-wrap relative" onClick={(e)=>e.stopPropagation()}>
               {tags.length === 0 && <span className="opacity-70">—</span>}
               {tags.map((t:any) => (
-                <TagBadge key={t.id} name={t.name} color={t.color} onRemove={async()=>{ try{ await api.removeTaskTag(task.id, t.id); setTags(prev=>prev.filter(x=>x.id!==t.id)); } catch {} }} />
+                <TagBadge key={t.id} name={t.name} color={t.color} onRemove={async()=>{ try{ await api.removeTaskTag(task.id, t.id); setTags(prev=>{ const next = prev.filter(x=>x.id!==t.id); onTagsChanged?.(task.id, next); return next; }); } catch {} }} />
               ))}
               <div className="relative">
                 <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add Tag</button>
                 {tagPickerOpen && (
                   <div className="absolute z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
-                    <TagPicker onSelect={async (tag)=>{ try { await api.addTaskTag(task.id, tag.id); const ts = await api.listTaskTags(task.id); setTags(ts as any[]); } catch {} setTagPickerOpen(false); }} />
+                    <TagPicker onSelect={async (tag)=>{ try { await api.addTaskTag(task.id, tag.id); const ts = await api.listTaskTags(task.id); setTags(ts as any[]); onTagsChanged?.(task.id, ts as any[]); } catch {} setTagPickerOpen(false); }} />
                   </div>
                 )}
               </div>

@@ -24,11 +24,14 @@ def create_tag(workspace_id: str, data: TagCreateIn, db: Session = Depends(get_d
     ws = db.get(Workspace, workspace_id)
     if not ws or ws.org_id != org.id:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    # Enforce name uniqueness within workspace (case sensitive at DB level)
-    existing = db.execute(select(Tag).where(Tag.workspace_id == workspace_id, Tag.name == data.name)).scalar_one_or_none()
+    # Enforce name uniqueness within workspace (case-insensitive via name_norm)
+    name = (data.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name required")
+    existing = db.execute(select(Tag).where(Tag.workspace_id == workspace_id, Tag.name_norm == name.lower())).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Tag with this name already exists")
-    tag = Tag(org_id=org.id, workspace_id=workspace_id, name=data.name.strip(), color=data.color or "#6B7280")
+    tag = Tag(org_id=org.id, workspace_id=workspace_id, name=name, name_norm=name.lower(), color=data.color or "#6B7280")
     db.add(tag)
     db.commit()
     db.refresh(tag)
@@ -41,11 +44,15 @@ def update_tag(tag_id: str, data: TagUpdateIn, db: Session = Depends(get_db), or
     if not tag or tag.org_id != org.id:
         raise HTTPException(status_code=404, detail="Tag not found")
     if data.name is not None:
-        # Uniqueness within workspace
-        exists = db.execute(select(Tag).where(Tag.workspace_id == tag.workspace_id, Tag.name == data.name, Tag.id != tag.id)).scalar_one_or_none()
+        name = (data.name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name required")
+        # Uniqueness within workspace (case-insensitive)
+        exists = db.execute(select(Tag).where(Tag.workspace_id == tag.workspace_id, Tag.name_norm == name.lower(), Tag.id != tag.id)).scalar_one_or_none()
         if exists:
             raise HTTPException(status_code=409, detail="Tag with this name already exists")
-        tag.name = data.name.strip()
+        tag.name = name
+        tag.name_norm = name.lower()
     if data.color is not None:
         tag.color = data.color
     db.commit()
@@ -61,4 +68,3 @@ def delete_tag(tag_id: str, db: Session = Depends(get_db), org=Depends(get_curre
     db.delete(tag)
     db.commit()
     return {"ok": True}
-
