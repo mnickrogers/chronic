@@ -58,7 +58,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-20" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-20 z-50" onClick={onClose}>
       <div className="frame bg-[#2B2B31] w-full max-w-3xl" onClick={(e)=>{ e.stopPropagation(); if(menuOpen) setMenuOpen(false); }}>
         <div className="p-4 border-b border-[#3A3A45] flex items-center gap-2">
           <input className="bg-transparent outline-none text-xl flex-1" value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveMeta} />
@@ -154,7 +154,10 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
               value={task.status_id || ''}
               onChange={async (e)=>{
                 const val = e.target.value || null;
-                const updated = await api.updateTask(task.id, { status_id: val });
+                // If choosing a "done" status, also mark complete
+                const isDone = (task.project_id ? (statusesByProject?.[task.project_id] || []) : (DEFAULT_STATUSES as any)).some((s:any)=> s.id === val && s.is_done);
+                const body:any = { status_id: val, is_completed: isDone };
+                const updated = await api.updateTask(task.id, body);
                 onChange?.(updated as any);
               }}
             >

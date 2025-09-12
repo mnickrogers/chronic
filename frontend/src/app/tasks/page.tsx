@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Project, Status } from "@/components/TaskList";
+import TaskBoard from "@/components/TaskBoard";
+import ViewToggle from "@/components/ViewToggle";
+import { useTaskViewMode } from "@/lib/view-mode";
 import TaskDetail from "@/components/TaskDetail";
 import { api } from "@/lib/api";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
@@ -27,6 +30,7 @@ function AllTasksInner() {
   const [workspaceTags, setWorkspaceTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const [viewMode, setViewMode] = useTaskViewMode();
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -83,13 +87,35 @@ function AllTasksInner() {
   }, [workspaceId]);
 
   const projectsById = useMemo(() => Object.fromEntries(projects.map((p:any)=>[p.id, p])), [projects]);
+  const statusIdToProjectId = useMemo(() => {
+    const m: Record<string, string> = {};
+    Object.entries(statusesByProject).forEach(([pid, sts]) => { (sts||[]).forEach((s:any)=>{ m[s.id] = pid; }); });
+    return m;
+  }, [statusesByProject]);
   const filteredTasks = useMemo(() => {
     if (selectedTags.length === 0) return tasks;
     return tasks.filter(t => (tagsByTask[t.id]||[]).some((tg:any)=> selectedTags.includes(tg.id)));
   }, [tasks, tagsByTask, selectedTags]);
 
   const toggle = async (t: Task, next: boolean) => {
-    const updated = await api.updateTask(t.id, { is_completed: next });
+    const body: any = { is_completed: next };
+    if (next) {
+      // Move to Done when completing
+      const doneId = t.project_id
+        ? (statusesByProject[t.project_id]?.find((s:any)=>s.is_done)?.id)
+        : (DEFAULT_STATUSES.find(s=>s.is_done)?.id);
+      if (doneId) body.status_id = doneId;
+    } else {
+      // Un-completing: if currently in a Done status, move to first non-done
+      const isInDone = t.status_id ? !!statuses[t.status_id]?.is_done : false;
+      if (isInDone) {
+        const targetId = t.project_id
+          ? (statusesByProject[t.project_id]?.find((s:any)=>!s.is_done)?.id || null)
+          : (DEFAULT_STATUSES.find(s=>!s.is_done)?.id || null);
+        body.status_id = targetId;
+      }
+    }
+    const updated = await api.updateTask(t.id, body);
     setTasks(prev=>prev.map(x=>x.id===t.id? (updated as any): x));
   };
 
@@ -102,10 +128,65 @@ function AllTasksInner() {
     setOpenTask(t as any);
   };
 
+  const createInStatus = async (statusId: string | null) => {
+    if (!workspaceId) return;
+    try {
+      // If status belongs to a project, create inside that project. If default or null → workspace task.
+      const projectId = statusId ? statusIdToProjectId[statusId] : null;
+      if (projectId) {
+        const t:any = await api.createTask(projectId, 'Untitled Task', statusId || undefined);
+        // If created in a Done column, also mark complete
+        if (statusId && statuses[statusId]?.is_done) {
+          const u:any = await api.updateTask(t.id, { is_completed: true });
+          Object.assign(t, u);
+        }
+        setTasks(prev=>[t, ...prev]);
+        setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
+        setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
+        setOpenTask(t);
+      } else {
+        const t:any = await api.createWorkspaceTask(workspaceId, 'Untitled Task', null, statusId || undefined);
+        if (statusId && statuses[statusId]?.is_done) {
+          const u:any = await api.updateTask(t.id, { is_completed: true });
+          Object.assign(t, u);
+        }
+        setTasks(prev=>[t, ...prev]);
+        setAssigneesByTask(prev=>({ ...prev, [t.id]: [] }));
+        setTagsByTask(prev=>({ ...prev, [t.id]: [] }));
+        setOpenTask(t);
+      }
+    } catch {}
+  };
+
+  const onDrop = async (taskId: string, toStatusId: string | null) => {
+    const t = tasks.find(x=>x.id===taskId);
+    if (!t) return;
+    try {
+      let body: any = { status_id: toStatusId };
+      if (toStatusId && statusIdToProjectId[toStatusId]) {
+        // Move across projects if target status belongs to a different project
+        const destProjectId = statusIdToProjectId[toStatusId];
+        if (destProjectId !== (t.project_id || null)) body.project_id = destProjectId;
+      } else if (!toStatusId && t.project_id) {
+        // Dropping into "No Status" does not imply leaving the project; keep project as is
+      } else if (toStatusId && toStatusId.startsWith('default:')) {
+        // Default status → project-less task
+        if (t.project_id) body.project_id = null;
+      }
+      const isDoneDest = !!(toStatusId && statuses[toStatusId]?.is_done);
+      body.is_completed = isDoneDest;
+      const updated:any = await api.updateTask(taskId, body);
+      setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
+    } catch {}
+  };
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-md">All Tasks</div>
+        <div className="flex items-center gap-3">
+          <div className="text-md">All Tasks</div>
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
+        </div>
         <button
           className={`button w-8 h-8 p-0 flex items-center justify-center ${!workspaceId ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={() => { if (workspaceId) createNew(); }}
@@ -122,17 +203,33 @@ function AllTasksInner() {
         onClear={()=> setSelectedTags([])}
       />
 
-      <TaskList
-        tasks={filteredTasks}
-        projectsById={projectsById}
-        statusesById={statuses}
-        assigneesByTask={assigneesByTask}
-        tagsByTask={tagsByTask}
-        onToggleCompleted={(t,next)=>toggle(t,next)}
-        onOpen={(t)=>setOpenTask(t)}
-        onNew={createNew}
-        newDisabled={!workspaceId}
-      />
+      {viewMode === 'list' ? (
+        <TaskList
+          tasks={filteredTasks}
+          projectsById={projectsById}
+          statusesById={statuses}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+          onNew={createNew}
+          newDisabled={!workspaceId}
+        />
+      ) : (
+        <TaskBoard
+          tasks={filteredTasks}
+          projectsById={projectsById}
+          statusesById={statuses}
+          statusOrder={['default:backlog','default:in_progress','default:blocked','default:done']}
+          assigneesByTask={assigneesByTask}
+          tagsByTask={tagsByTask}
+          newDisabled={!workspaceId}
+          onCreateInStatus={createInStatus}
+          onDrop={onDrop}
+          onToggleCompleted={(t,next)=>toggle(t,next)}
+          onOpen={(t)=>setOpenTask(t)}
+        />
+      )}
       {openTask && (
         <TaskDetail
           task={openTask}

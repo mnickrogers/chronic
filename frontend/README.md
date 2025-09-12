@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Task Views
+
+- All task lists (All Tasks and Project Tasks) support both `List` and `Board` views.
+- Use the view toggle in the page header to switch.
+- Your selection is saved to `localStorage` (`chronic:taskViewMode`) and applied across pages.
+- In Board view, drag tasks between columns to change their status. In All Tasks, dropping into another project's status moves the task to that project.
+- Use the `+` button in a column header to create a new task pre-set to that column's status.
+ - Completing a task automatically moves it to the `Done` status for its project (or the default `Done` if the task has no project). Setting a task’s status to a `Done` column also marks it complete.
