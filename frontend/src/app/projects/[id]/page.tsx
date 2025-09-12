@@ -49,16 +49,26 @@ function ProjectTasksInner() {
     if (!id) return;
     const ws = new WebSocket((process.env.NEXT_PUBLIC_WS_BASE || 'ws://localhost:8000') + '/ws');
     wsRef.current = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ subscribe: `project:${id}` }));
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ subscribe: `project:${id}` }));
+      if (workspaceId) ws.send(JSON.stringify({ subscribe: `workspace:${workspaceId}` }));
+    };
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'task.created') { setTasks(prev => [msg.task, ...prev]); setAssigneesByTask(prev=>({ ...prev, [msg.task.id]: [] })); setTagsByTask(prev=>({ ...prev, [msg.task.id]: [] })); }
       if (msg.type === 'task.updated') setTasks(prev => prev.map(t => t.id === msg.task.id ? msg.task : t));
       if (msg.type === 'task.deleted') { setTasks(prev => prev.filter(t => t.id !== msg.id)); setAssigneesByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); setTagsByTask(prev=>{ const { [msg.id]:_, ...rest } = prev; return rest; }); }
+      if (msg.type === 'project.tag.added') setProjectTags(prev => {
+        if (prev.some((t:any)=>t.id===msg.tag.id)) return prev;
+        return [...prev, msg.tag];
+      });
+      if (msg.type === 'project.tag.removed') setProjectTags(prev => prev.filter((t:any)=>t.id!==msg.id));
+      if (msg.type === 'tag.updated') setProjectTags(prev => prev.map((t:any)=> t.id===msg.tag.id ? msg.tag : t));
+      if (msg.type === 'tag.deleted') setProjectTags(prev => prev.filter((t:any)=> t.id !== msg.id));
       if (msg.type === 'project.deleted') { try { router.push('/projects'); } catch {} }
     };
     return () => { try { ws.close(); } catch {} };
-  }, [id]);
+  }, [id, workspaceId]);
 
   const statusesById = useMemo(() => Object.fromEntries(statuses.map(s=>[s.id, s])), [statuses]);
   const filteredTasks = useMemo(() => {

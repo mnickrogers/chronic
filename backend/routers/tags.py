@@ -5,6 +5,7 @@ from sqlalchemy import select
 from ..deps import get_current_org, get_db
 from ..models import Tag, Workspace
 from ..schemas import TagOut, TagCreateIn, TagUpdateIn
+from ..realtime import manager
 
 
 router = APIRouter(prefix="/tags", tags=["tags"])
@@ -35,6 +36,12 @@ def create_tag(workspace_id: str, data: TagCreateIn, db: Session = Depends(get_d
     db.add(tag)
     db.commit()
     db.refresh(tag)
+    # Broadcast to workspace for filter bars
+    try:
+        import anyio
+        anyio.from_thread.run(manager.broadcast, f"workspace:{workspace_id}", {"type": "tag.created", "tag": TagOut.model_validate(tag).model_dump()})
+    except Exception:
+        pass
     return tag
 
 
@@ -57,6 +64,11 @@ def update_tag(tag_id: str, data: TagUpdateIn, db: Session = Depends(get_db), or
         tag.color = data.color
     db.commit()
     db.refresh(tag)
+    try:
+        import anyio
+        anyio.from_thread.run(manager.broadcast, f"workspace:{tag.workspace_id}", {"type": "tag.updated", "tag": TagOut.model_validate(tag).model_dump()})
+    except Exception:
+        pass
     return tag
 
 
@@ -65,6 +77,13 @@ def delete_tag(tag_id: str, db: Session = Depends(get_db), org=Depends(get_curre
     tag = db.get(Tag, tag_id)
     if not tag or tag.org_id != org.id:
         raise HTTPException(status_code=404, detail="Tag not found")
+    ws_id = tag.workspace_id
+    tag_id = tag.id
     db.delete(tag)
     db.commit()
+    try:
+        import anyio
+        anyio.from_thread.run(manager.broadcast, f"workspace:{ws_id}", {"type": "tag.deleted", "id": tag_id})
+    except Exception:
+        pass
     return {"ok": True}

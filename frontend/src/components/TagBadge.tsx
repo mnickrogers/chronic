@@ -1,9 +1,9 @@
 "use client";
-export default function TagBadge({ name, color, onRemove }:{ name: string; color?: string | null; onRemove?: ()=>void }){
+export default function TagBadge({ name, color, onRemove, borderless }:{ name: string; color?: string | null; onRemove?: ()=>void; borderless?: boolean }){
   const bg = color || '#6B7280';
   const text = readableTextColor(bg);
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-[var(--stroke)]" style={{ backgroundColor: bg, color: text }}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm ${borderless? '':'border border-[var(--stroke)]'}`} style={{ backgroundColor: bg, color: text }}>
       <span className="text-xs">{name}</span>
       {onRemove && (
         <button className="text-xs opacity-80 hover:opacity-100" onClick={(e)=>{ e.stopPropagation(); onRemove(); }} title="Remove">×</button>
@@ -22,4 +22,3 @@ function readableTextColor(hex: string): string {
     return yiq >= 128 ? '#111827' : '#F9FAFB';
   } catch { return '#F9FAFB'; }
 }
-

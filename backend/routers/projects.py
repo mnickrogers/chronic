@@ -149,6 +149,12 @@ def add_project_tag(project_id: str, body: dict, db: Session = Depends(get_db), 
     if not existing:
         db.add(ProjectTag(project_id=project_id, tag_id=tag.id))
         db.commit()
+        # Notify project subscribers
+        try:
+            import anyio
+            anyio.from_thread.run(manager.broadcast, f"project:{project_id}", {"type": "project.tag.added", "tag": TagOut.model_validate(tag).model_dump()})
+        except Exception:
+            pass
     joins = db.execute(select(ProjectTag).where(ProjectTag.project_id == project_id)).scalars().all()
     out: list[Tag] = []
     for j in joins:
@@ -168,6 +174,11 @@ def remove_project_tag(project_id: str, tag_id: str, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Tag not attached")
     db.delete(assoc)
     db.commit()
+    try:
+        import anyio
+        anyio.from_thread.run(manager.broadcast, f"project:{project_id}", {"type": "project.tag.removed", "id": tag_id})
+    except Exception:
+        pass
     return {"ok": True}
 
 

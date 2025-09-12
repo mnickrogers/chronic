@@ -13,12 +13,11 @@ export default function TagFilter({ tags, selected, onToggle, onClear }:{ tags: 
       <div className="flex items-center gap-2 flex-wrap">
         {tags.length === 0 && <div className="text-sm opacity-70">No tags</div>}
         {tags.map(t => (
-          <button key={t.id} className={`border rounded-sm px-0 py-0.5 ${selected.includes(t.id)? 'ring-2 ring-[var(--accent)]':''}`} onClick={()=>onToggle(t.id)}>
-            <TagBadge name={t.name} color={t.color} />
+          <button key={t.id} className={`rounded-sm px-0 py-0.5 ${selected.includes(t.id)? 'ring-2 ring-[var(--accent)]':''}`} onClick={()=>onToggle(t.id)}>
+            <TagBadge name={t.name} color={t.color} borderless />
           </button>
         ))}
       </div>
     </div>
   );
 }
-

@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime
 
 from ..deps import get_current_user, get_current_org, get_db
-from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership, Tag, TaskTag
+from ..models import Task, Project, ProjectStatus, Workspace, TaskAssignee, User, ProjectMembership, WorkspaceMembership, Tag, TaskTag, ProjectTag
 from ..schemas import TaskCreateIn, TaskUpdateIn, TaskOut, TaskAssigneeOut, TaskAssigneeAddIn, UserOut, TagOut, TaskTagsBatchIn
 from ..realtime import manager
 
@@ -282,6 +282,18 @@ def add_task_tag(task_id: str, body: dict, db: Session = Depends(get_db), org=De
     if not existing:
         db.add(TaskTag(task_id=task.id, tag_id=tag.id))
         db.commit()
+        # If the task belongs to a project, ensure tag appears in project tag set
+        if task.project_id:
+            pt = db.execute(select(ProjectTag).where(ProjectTag.project_id == task.project_id, ProjectTag.tag_id == tag.id)).scalar_one_or_none()
+            if not pt:
+                db.add(ProjectTag(project_id=task.project_id, tag_id=tag.id))
+                db.commit()
+                # Broadcast to the project channel so filters update
+                try:
+                    import anyio
+                    anyio.from_thread.run(manager.broadcast, f"project:{task.project_id}", {"type": "project.tag.added", "tag": TagOut.model_validate(tag).model_dump()})
+                except Exception:
+                    pass
     # return list
     joins = db.execute(select(TaskTag).where(TaskTag.task_id == task.id)).scalars().all()
     out: list[Tag] = []

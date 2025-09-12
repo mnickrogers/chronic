@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import TaskList, { Task, Project, Status } from "@/components/TaskList";
 import TaskDetail from "@/components/TaskDetail";
@@ -26,6 +26,7 @@ function AllTasksInner() {
   const [tagsByTask, setTagsByTask] = useState<Record<string, any[]>>({});
   const [workspaceTags, setWorkspaceTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -60,6 +61,25 @@ function AllTasksInner() {
         } catch {}
       } catch {}
     })();
+  }, [workspaceId]);
+
+  // Live updates for workspace tags
+  useEffect(() => {
+    if (!workspaceId) return;
+    const ws = new WebSocket((process.env.NEXT_PUBLIC_WS_BASE || 'ws://localhost:8000') + '/ws');
+    wsRef.current = ws;
+    ws.onopen = () => ws.send(JSON.stringify({ subscribe: `workspace:${workspaceId}` }));
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'tag.created') setWorkspaceTags(prev => {
+        // Avoid dup by id
+        if (prev.some((t:any)=>t.id===msg.tag.id)) return prev;
+        return [...prev, msg.tag];
+      });
+      if (msg.type === 'tag.updated') setWorkspaceTags(prev => prev.map((t:any)=> t.id===msg.tag.id ? msg.tag : t));
+      if (msg.type === 'tag.deleted') setWorkspaceTags(prev => prev.filter((t:any)=> t.id !== msg.id));
+    };
+    return () => { try { ws.close(); } catch {} };
   }, [workspaceId]);
 
   const projectsById = useMemo(() => Object.fromEntries(projects.map((p:any)=>[p.id, p])), [projects]);
