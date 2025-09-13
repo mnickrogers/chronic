@@ -44,7 +44,7 @@ function TagsInner() {
     <div>
       <div className="mb-3 text-md">Tags</div>
       {error && <div className="mb-2 text-sm text-red-400">{error}</div>}
-      <div className="frame bg-[#2B2B31] p-3">
+      <div className="frame bg-[var(--bg-2)] p-3">
         <div className="space-y-2">
           {tags.length === 0 && <div className="text-sm opacity-70">No tags yet</div>}
           {tags.map(t => (
@@ -81,4 +81,3 @@ function TagsInner() {
     </div>
   );
 }
-

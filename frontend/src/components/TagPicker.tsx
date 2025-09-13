@@ -33,11 +33,11 @@ export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
   };
 
   return (
-    <div className="frame p-2 bg-[#2B2B31] border border-[var(--stroke)] rounded-sm">
+    <div className="frame p-2 bg-[var(--bg-2)] border border-[var(--stroke)] rounded-sm">
       {/* Existing tags */}
       <div className="max-h-60 overflow-auto divide-y divide-[#3A3A45]">
         {tags.map(t => (
-          <div key={t.id} className="flex items-center gap-2 p-2 hover:bg-[#222227]">
+          <div key={t.id} className="flex items-center gap-2 p-2 hover:bg-[var(--bg-1)]">
             {editingId === t.id ? (
               <>
                 <input className="input flex-1" value={editName} onChange={e=>setEditName(e.target.value)} />
@@ -76,4 +76,3 @@ export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
     </div>
   );
 }
-

@@ -151,9 +151,9 @@ function ProjectTasksInner() {
             ...
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-10 w-44 border border-[var(--stroke)] bg-[#2B2B31] rounded-sm shadow">
+            <div className="absolute right-0 top-full mt-1 z-10 w-44 border border-[var(--stroke)] bg-[var(--bg-2)] rounded-sm shadow">
               <button
-                className="w-full text-left px-3 py-2 hover:bg-[#222227] text-red-400"
+                className="w-full text-left px-3 py-2 hover:bg-[var(--bg-1)] text-red-400"
                 onClick={async()=>{
                   setMenuOpen(false);
                   try {
@@ -171,7 +171,7 @@ function ProjectTasksInner() {
         </div>
       </div>
 
-      <div className="frame p-3 bg-[#2B2B31] mb-3">
+      <div className="frame p-3 bg-[var(--bg-2)] mb-3">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm opacity-80">Project members</div>
           <div className="relative">
@@ -197,7 +197,7 @@ function ProjectTasksInner() {
         <div className="flex items-center gap-2 flex-wrap mb-3">
           {members.length === 0 && <div className="text-sm opacity-70">No members yet</div>}
           {members.map(u => (
-            <span key={u.id} className="flex items-center gap-1 bg-[#1F1F23] border border-[var(--stroke)] px-2 py-1 rounded-sm">
+            <span key={u.id} className="flex items-center gap-1 bg-[var(--bg-1)] border border-[var(--stroke)] px-2 py-1 rounded-sm">
               <UserBadge name={u.display_name} email={u.email} />
               <span className="text-xs">{u.display_name}</span>
               <button className="text-xs opacity-70 hover:opacity-100" title="Remove" onClick={async()=>{ try{ await api.removeProjectMember(id, u.id); setMembers(prev=>prev.filter(x=>x.id!==u.id)); }catch{} }}>×</button>
@@ -210,7 +210,7 @@ function ProjectTasksInner() {
         </div>
       </div>
 
-      <div className="frame p-3 bg-[#2B2B31] mb-3">
+      <div className="frame p-3 bg-[var(--bg-2)] mb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm opacity-80">Project tags</div>
           <div className="relative">

@@ -93,6 +93,11 @@ def update_me(
         user.last_name = data.last_name
         updated = True
 
+    # Theme update (validated by schema Literal)
+    if data.theme is not None and data.theme != user.theme:
+        user.theme = data.theme
+        updated = True
+
     if updated:
         # Keep display_name in sync when either piece changed
         fn = (user.first_name or '').strip()

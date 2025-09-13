@@ -47,7 +47,7 @@ export default function Welcome() {
   // Render minimal standalone view (no AppShell) for first-run
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="frame w-full max-w-md p-6 bg-[#2B2B31]">
+      <div className="frame w-full max-w-md p-6 bg-[var(--bg-2)]">
         <h1 className="text-xl mb-2">Name your workspace</h1>
         <p className="text-sm opacity-80 mb-4">You can invite teammates later; this just helps organize your projects.</p>
         <form onSubmit={submit} className="space-y-3">
