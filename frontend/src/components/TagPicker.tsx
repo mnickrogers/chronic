@@ -5,7 +5,7 @@ import { useCurrentWorkspace } from "@/components/AppShell";
 
 export type Tag = { id: string; name: string; color?: string | null };
 
-export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
+export default function TagPicker({ onSelect, onClose }:{ onSelect: (tag: Tag)=>void, onClose?: ()=>void }){
   const { workspaceId } = useCurrentWorkspace();
   const [tags, setTags] = useState<Tag[]>([]);
   const [creating, setCreating] = useState(false);
@@ -14,8 +14,21 @@ export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('#6B7280');
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => { if(!workspaceId) return; api.listTags(workspaceId).then(setTags).catch(()=>{}); }, [workspaceId]);
+
+  // Close when clicking outside the picker
+  useEffect(() => {
+    if (!onClose) return;
+    const handler = (e: MouseEvent) => {
+      if (!rootEl) return;
+      const target = e.target as Node;
+      if (!rootEl.contains(target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [rootEl, onClose]);
 
   const create = async () => {
     if (!workspaceId || !name.trim()) return;
@@ -33,7 +46,7 @@ export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
   };
 
   return (
-    <div className="frame p-2 bg-[var(--bg-2)] border border-[var(--stroke)] rounded-sm">
+    <div ref={setRootEl} className="frame p-2 bg-[var(--bg-2)] border border-[var(--stroke)] rounded-sm">
       {/* Existing tags */}
       <div className="max-h-60 overflow-auto divide-y divide-[#3A3A45]">
         {tags.map(t => (
@@ -63,10 +76,14 @@ export default function TagPicker({ onSelect }:{ onSelect: (tag: Tag)=>void }){
       {/* Create new */}
       {creating ? (
         <div className="mt-2 flex items-center gap-2">
-          <input className="input flex-1" placeholder="New tag name" value={name} onChange={e=>setName(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') create(); }} />
+          <input
+            className="input flex-1"
+            placeholder="New tag name"
+            value={name}
+            onChange={e=>setName(e.target.value)}
+            onKeyDown={(e)=>{ if(e.key==='Enter') create(); }}
+          />
           <input type="color" className="w-8 h-8 p-0" value={color} onChange={e=>setColor(e.target.value)} />
-          <button className="button" onClick={create}>Add</button>
-          <button className="button" onClick={()=>{ setCreating(false); setName(''); }}>Cancel</button>
         </div>
       ) : (
         <div className="mt-2">

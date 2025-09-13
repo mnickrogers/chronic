@@ -217,7 +217,10 @@ function ProjectTasksInner() {
             <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add</button>
             {tagPickerOpen && (
               <div className="absolute right-0 z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
-                <TagPicker onSelect={async (tag)=>{ try { await api.addProjectTag(id, tag.id); const ts = await api.listProjectTags(id); setProjectTags(ts as any[]); } catch {} setTagPickerOpen(false); }} />
+                <TagPicker
+                  onSelect={async (tag)=>{ try { await api.addProjectTag(id, tag.id); const ts = await api.listProjectTags(id); setProjectTags(ts as any[]); } catch {} setTagPickerOpen(false); }}
+                  onClose={()=>setTagPickerOpen(false)}
+                />
               </div>
             )}
           </div>

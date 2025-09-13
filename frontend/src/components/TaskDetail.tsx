@@ -133,7 +133,10 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
                 <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add Tag</button>
                 {tagPickerOpen && (
                   <div className="absolute z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
-                    <TagPicker onSelect={async (tag)=>{ try { await api.addTaskTag(task.id, tag.id); const ts = await api.listTaskTags(task.id); setTags(ts as any[]); onTagsChanged?.(task.id, ts as any[]); } catch {} setTagPickerOpen(false); }} />
+                    <TagPicker
+                      onSelect={async (tag)=>{ try { await api.addTaskTag(task.id, tag.id); const ts = await api.listTaskTags(task.id); setTags(ts as any[]); onTagsChanged?.(task.id, ts as any[]); } catch {} setTagPickerOpen(false); }}
+                      onClose={()=>setTagPickerOpen(false)}
+                    />
                   </div>
                 )}
               </div>
