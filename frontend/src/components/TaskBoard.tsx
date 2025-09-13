@@ -79,7 +79,11 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
     });
   };
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${order.length}, minmax(220px, 1fr))` }}>
+    // Wrap the board grid in a horizontal scroll container so that
+    // wide boards scroll independently from the whole page. This keeps
+    // list views unaffected and prevents body-level horizontal scroll.
+    <div className="overflow-x-auto overscroll-x-contain w-full">
+      <div className="grid gap-3 w-max" style={{ gridTemplateColumns: `repeat(${order.length}, minmax(220px, 1fr))` }}>
       {order.map((colId) => {
         const items = sortTasksForColumn(colId, columns[colId].tasks);
         const showColActive = dragOver?.colId === colId && dragOver?.pos === 'end';
@@ -153,6 +157,7 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
           </div>
         </div>
       );})}
+      </div>
     </div>
   );
 }

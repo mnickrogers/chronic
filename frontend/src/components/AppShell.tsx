@@ -99,8 +99,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </aside>
 
-      {/* Main content area */}
-      <main className="p-4">{children}</main>
+      {/* Main content area: prevent layout from creating page-wide horizontal scroll.
+          Board views handle their own horizontal scrolling inside. */}
+      <main className="p-4 min-w-0 overflow-x-hidden">{children}</main>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
