@@ -9,6 +9,7 @@ import TaskDetail from "@/components/TaskDetail";
 import { api } from "@/lib/api";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
 import TagFilter from "@/components/TagFilter";
+import { useKeyboard } from "@/lib/keyboard/KeyboardProvider";
 
 export default function AllTasksPage() {
   return (
@@ -31,6 +32,7 @@ function AllTasksInner() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const [viewMode, setViewMode] = useTaskViewMode();
+  const kb = useKeyboard();
 
   // Load projects and all tasks in the current workspace
   useEffect(() => {
@@ -179,6 +181,21 @@ function AllTasksInner() {
       setTasks(prev=>prev.map(x=>x.id===taskId? updated: x));
     } catch {}
   };
+
+  // Toggle list/board with 'v' and suspend nav when TaskDetail is open
+  useEffect(() => {
+    const reg = kb.registerScope((evt) => {
+      const { input } = evt;
+      if (!input.ctrlKey && !input.metaKey && !input.altKey && input.key.toLowerCase() === 'v') {
+        setViewMode(m => m === 'list' ? 'board' : 'list');
+        return true;
+      }
+      return false;
+    }, { priority: 2, active: true });
+    return () => reg.unregister();
+  }, [kb, setViewMode]);
+
+  // Do not suspend globally; TaskDetail registers its own high-priority scope.
 
   return (
     <div>

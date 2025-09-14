@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useKeyboard } from "@/lib/keyboard/KeyboardProvider";
 import SettingsDialog from "@/components/SettingsDialog";
 
 /**
@@ -57,8 +58,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Ensure a workspace is cached early for routes that need it
   useCurrentWorkspace();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const kb = useKeyboard();
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+  // Register global go-to shortcuts and suspend while settings are open
+  useEffect(() => {
+    const reg = kb.registerScope((evt) => {
+      if (evt.sequence === "gt") { router.push("/tasks"); return true; }
+      if (evt.sequence === "gp") { router.push("/projects"); return true; }
+      if (evt.sequence === "ga") { router.push("/tags"); return true; }
+      return false;
+    }, { priority: 1, active: true });
+    return () => reg.unregister();
+  }, [kb, router]);
+
+  useEffect(() => { kb.setSuspended(settingsOpen); }, [settingsOpen]);
 
   return (
     <div className="min-h-screen grid grid-cols-[220px_1fr]" style={{ gridTemplateRows: "auto 1fr" }}>

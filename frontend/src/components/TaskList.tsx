@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { api } from "@/lib/api";
 import TagBadge from "@/components/TagBadge";
+import { useListNav } from "@/lib/keyboard/useListNav";
 
 export type Task = {
   id: string;
@@ -33,8 +34,15 @@ export type TaskListProps = {
 export default function TaskList({ tasks, projectsById={}, statusesById={}, assigneesByTask={}, tagsByTask={}, onToggleCompleted, onOpen, onNew, newDisabled }: TaskListProps) {
   const grouped = useMemo(() => groupByDue(tasks), [tasks]);
   const sections = ["Today", "This Week", "This Month", "Later", "No Date"] as const;
+  const flat = useMemo(() => sections.flatMap((sec) => grouped[sec]), [grouped]);
+  const indexById = useMemo(() => Object.fromEntries(flat.map((t, i) => [t.id, i])), [flat]);
+  const { getContainerProps, getItemProps, activeIndex } = useListNav(flat.length, {
+    onOpen: (i) => { const t = flat[i]; if (t) onOpen?.(t); },
+    onToggle: (i) => { const t = flat[i]; if (t) onToggleCompleted?.(t, !t.is_completed); },
+    onNew: () => { if (!newDisabled) onNew?.(); },
+  });
   return (
-    <div className="frame bg-[var(--bg-2)] relative">
+    <div className="frame bg-[var(--bg-2)] relative" {...getContainerProps()}>
       {sections.map((sec, idx) => (
         <div key={sec} className={idx>0?"border-t border-[#3A3A45]":undefined}>
           <div className="px-3 py-2 text-sm opacity-80 border-b border-[#3A3A45]">{sec}</div>
@@ -51,6 +59,7 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
                 tags={tagsByTask?.[t.id] || []}
                 onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
                 onOpen={()=>onOpen?.(t)}
+                itemProps={getItemProps(indexById[t.id])}
               />
             ))
           )}
@@ -60,9 +69,9 @@ export default function TaskList({ tasks, projectsById={}, statusesById={}, assi
   );
 }
 
-function TaskRow({ task, project, status, assignees, tags, onToggleCompleted, onOpen }:{ task: Task, project?: Project, status?: Status, assignees?: User[], tags?: Tag[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void }){
+function TaskRow({ task, project, status, assignees, tags, onToggleCompleted, onOpen, itemProps }:{ task: Task, project?: Project, status?: Status, assignees?: User[], tags?: Tag[], onToggleCompleted?: (next:boolean)=>void, onOpen?: ()=>void, itemProps?: any }){
   return (
-      <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[var(--bg-1)]" onClick={onOpen}>
+      <div className="flex items-center gap-1 pl-3 pr-1 py-2 border-b border-[#3A3A45] last:border-b-0 cursor-pointer hover:bg-[var(--bg-1)]" onClick={onOpen} {...itemProps}>
       <div className="w-5 h-5 border border-[var(--stroke)] rounded-sm flex items-center justify-center" onClick={(e)=>{ e.stopPropagation(); onToggleCompleted?.(!task.is_completed); }}>
         {task.is_completed ? <div className="w-3 h-3 bg-[var(--stroke)]"/> : null}
       </div>

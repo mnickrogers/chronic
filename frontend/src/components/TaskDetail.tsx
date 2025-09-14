@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, API_BASE } from "@/lib/api";
 import type { Task, Project, Status } from "./TaskList";
 import { DEFAULT_STATUSES } from "@/lib/default-statuses";
@@ -8,6 +8,7 @@ import UserBadge from "@/components/UserBadge";
 import { useCurrentWorkspace } from "@/components/AppShell";
 import TagPicker from "@/components/TagPicker";
 import TagBadge from "@/components/TagBadge";
+import { useKeyboard } from "@/lib/keyboard/KeyboardProvider";
 
 export default function TaskDetail({ task, project, status, onClose, onChange, onAssigneesChanged, onTagsChanged, onDelete, projects, statusesById, statusesByProject }:{ task: Task, project?: Project, status?: Status, onClose: ()=>void, onChange?: (t:Task)=>void, onAssigneesChanged?: (taskId: string, users: any[]) => void, onTagsChanged?: (taskId: string, tags: any[]) => void, onDelete?: (taskId: string) => void, projects?: Project[], statusesById?: Record<string, Status>, statusesByProject?: Record<string, Status[]> }){
   const [title, setTitle] = useState(task.name);
@@ -21,6 +22,70 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
   const { workspaceId } = useCurrentWorkspace();
   const [tags, setTags] = useState<any[]>([]);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const kb = useKeyboard();
+
+  // Keyboard focus targets inside the modal
+  const assignBtnRef = useRef<HTMLButtonElement | null>(null);
+  const addTagBtnRef = useRef<HTMLButtonElement | null>(null);
+  const dueRef = useRef<HTMLInputElement | null>(null);
+  const projectRef = useRef<HTMLSelectElement | null>(null);
+  const statusRef = useRef<HTMLSelectElement | null>(null);
+  // Start un-highlighted
+  const [detailActiveIndex, setDetailActiveIndex] = useState<number>(-1);
+
+  // Move focus when index changes
+  useEffect(() => {
+    const targets = [assignBtnRef.current, addTagBtnRef.current, dueRef.current, projectRef.current, statusRef.current];
+    const el = detailActiveIndex >= 0 ? targets[detailActiveIndex] : null;
+    if (el) { try { (el as any).focus(); } catch {} }
+  }, [detailActiveIndex]);
+
+  // High-priority scope for modal keyboard
+  useEffect(() => {
+    const reg = kb.registerScope((evt) => {
+      const { input } = evt;
+      if (input.key === 'Escape') {
+        if (pickerOpen) { setPickerOpen(false); return true; }
+        if (tagPickerOpen) { setTagPickerOpen(false); return true; }
+        onClose();
+        return true;
+      }
+      if (!input.ctrlKey && !input.metaKey && !input.altKey) {
+        const gridCols = 2;
+        const posFor = (idx:number) => ({ col: idx % gridCols, row: Math.floor(idx / gridCols) });
+        const idxFor = (col:number,row:number) => {
+          const idx = row * gridCols + col;
+          // valid items: 0..4 excluding col=1,row=2
+          if (idx === 5) return -1;
+          return idx;
+        };
+        const ensureActive = () => { if (detailActiveIndex < 0) { setDetailActiveIndex(0); return true; } return false; };
+        if (input.key === 'h' || input.key === 'ArrowLeft') { if (ensureActive()) return true; const p = posFor(detailActiveIndex); const n = idxFor(Math.max(0, p.col-1), p.row); if (n>=0) setDetailActiveIndex(n); return true; }
+        if (input.key === 'l' || input.key === 'ArrowRight') { if (ensureActive()) return true; const p = posFor(detailActiveIndex); const n = idxFor(Math.min(1, p.col+1), p.row); if (n>=0) setDetailActiveIndex(n); return true; }
+        if (input.key === 'j' || input.key === 'ArrowDown') { if (ensureActive()) return true; const p = posFor(detailActiveIndex); const n = idxFor(p.col, p.row+1); if (n>=0) setDetailActiveIndex(n); return true; }
+        if (input.key === 'k' || input.key === 'ArrowUp') { if (ensureActive()) return true; const p = posFor(detailActiveIndex); const n = idxFor(p.col, Math.max(0, p.row-1)); if (n>=0) setDetailActiveIndex(n); return true; }
+        if (input.key === 'Enter' || input.key === 'o') {
+          const idx = detailActiveIndex < 0 ? 0 : detailActiveIndex;
+          if (idx === 0) { setPickerOpen(true); assignBtnRef.current?.focus(); return true; }
+          if (idx === 1) { setTagPickerOpen(true); addTagBtnRef.current?.focus(); return true; }
+          if (idx === 2) { dueRef.current?.focus(); (dueRef.current as any)?.showPicker?.(); return true; }
+          if (idx === 3) { projectRef.current?.focus(); try { (projectRef.current as any)?.click?.(); } catch {} return true; }
+          if (idx === 4) { statusRef.current?.focus(); try { (statusRef.current as any)?.click?.(); } catch {} return true; }
+        }
+      }
+      return false;
+    }, { priority: 10, active: true });
+    return () => reg.unregister();
+  }, [kb, detailActiveIndex, pickerOpen, tagPickerOpen, onClose]);
+
+  // Allow Escape to close while typing in inputs/selects
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (pickerOpen) { setPickerOpen(false); return; } if (tagPickerOpen) { setTagPickerOpen(false); return; } onClose(); }
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true } as any);
+  }, [pickerOpen, tagPickerOpen, onClose]);
 
   useEffect(() => { setTitle(task.name); setDue(task.due_date || ''); }, [task.id]);
   useEffect(() => { (async () => { try { const res = await fetch(`${API_BASE}/comments/task/${task.id}`, { credentials: 'include' }); if(res.ok) setComments(await res.json()); } catch {} })(); }, [task.id]);
@@ -108,7 +173,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
                 </span>
               ))}
               <div className="relative">
-                <button className="button" onClick={()=>setPickerOpen(v=>!v)}>Assign</button>
+                <button ref={assignBtnRef} className="button" onClick={()=>setPickerOpen(v=>!v)}>Assign</button>
                 {pickerOpen && workspaceId && (
                   <div className="absolute z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
                     <UserPicker
@@ -130,7 +195,7 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
                 <TagBadge key={t.id} name={t.name} color={t.color} onRemove={async()=>{ try{ await api.removeTaskTag(task.id, t.id); setTags(prev=>{ const next = prev.filter(x=>x.id!==t.id); onTagsChanged?.(task.id, next); return next; }); } catch {} }} />
               ))}
               <div className="relative">
-                <button className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add Tag</button>
+                <button ref={addTagBtnRef} className="button" onClick={()=>setTagPickerOpen(v=>!v)}>Add Tag</button>
                 {tagPickerOpen && (
                   <div className="absolute z-10 mt-1 w-80" onClick={(e)=>e.stopPropagation()}>
                     <TagPicker
@@ -143,16 +208,17 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
             </div>
           </Meta>
           <Meta label="Due">
-            <input type="date" className="input w-full" value={due} onChange={e=>setDue(e.target.value)} onBlur={saveMeta} />
+            <input ref={dueRef} type="date" className="input w-full" value={due} onChange={e=>setDue(e.target.value)} onBlur={saveMeta} />
           </Meta>
           <Meta label="Project">
-            <select className="input w-full" value={task.project_id || ''} onChange={(e)=>moveProject(e.target.value || null as any)}>
+            <select ref={projectRef} className="input w-full" value={task.project_id || ''} onChange={(e)=>moveProject(e.target.value || null as any)}>
               <option value="">[none]</option>
               {(projects||[]).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Meta>
           <Meta label="Status">
             <select
+              ref={statusRef}
               className="input w-full"
               value={task.status_id || ''}
               onChange={async (e)=>{
