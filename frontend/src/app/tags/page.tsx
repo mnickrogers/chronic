@@ -63,8 +63,22 @@ function TagsInner() {
             <div key={t.id} className="flex items-center gap-2" {...listNav.getItemProps(i)}>
               {editingId === t.id ? (
                 <>
-                  <input className="input flex-1" value={editName} onChange={e=>setEditName(e.target.value)} />
-                  <input type="color" className="w-8 h-8 p-0" value={editColor} onChange={e=>setEditColor(e.target.value)} />
+                  <input
+                    className="input flex-1"
+                    value={editName}
+                    onChange={e=>setEditName(e.target.value)}
+                    onKeyDown={(e)=>{
+                      if(e.key==='Escape'){ e.stopPropagation(); setEditingId(null); }
+                      if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); saveEdit(t.id); }
+                    }}
+                  />
+                  <input
+                    type="color"
+                    className="w-8 h-8 p-0"
+                    value={editColor}
+                    onChange={e=>setEditColor(e.target.value)}
+                    onKeyDown={(e)=>{ if(e.key==='Escape'){ e.stopPropagation(); setEditingId(null); } }}
+                  />
                   <button className="button" onClick={()=>saveEdit(t.id)}>Save</button>
                   <button className="button" onClick={()=>setEditingId(null)}>Cancel</button>
                 </>
@@ -80,10 +94,26 @@ function TagsInner() {
           ))}
           {creating ? (
             <div className="flex items-center gap-2">
-              <input ref={createRef} className="input flex-1" placeholder="New tag name" value={name} onChange={e=>setName(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') create(); }} />
-              <input type="color" className="w-8 h-8 p-0" value={color} onChange={e=>setColor(e.target.value)} />
+              <input
+                ref={createRef}
+                className="input flex-1"
+                placeholder="New tag name"
+                value={name}
+                onChange={e=>setName(e.target.value)}
+                onKeyDown={(e)=>{
+                  if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); create(); }
+                  if(e.key==='Escape'){ e.stopPropagation(); setCreating(false); setName(''); setColor('#6B7280'); }
+                }}
+              />
+              <input
+                type="color"
+                className="w-8 h-8 p-0"
+                value={color}
+                onChange={e=>setColor(e.target.value)}
+                onKeyDown={(e)=>{ if(e.key==='Escape'){ e.stopPropagation(); setCreating(false); setName(''); setColor('#6B7280'); } }}
+              />
               <button className="button" onClick={create}>Add</button>
-              <button className="button" onClick={()=>{ setCreating(false); setName(''); }}>Cancel</button>
+              <button className="button" onClick={()=>{ setCreating(false); setName(''); setColor('#6B7280'); }}>Cancel</button>
             </div>
           ) : (
             <button className="button" onClick={()=>setCreating(true)}>New Tag</button>

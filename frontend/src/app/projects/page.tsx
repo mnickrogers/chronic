@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import AppShell, { useCurrentWorkspace } from "@/components/AppShell";
 import { api } from "@/lib/api";
 import { useListNav } from "@/lib/keyboard/useListNav";
+import { useRouter } from "next/navigation";
 
 export default function ProjectsPage() {
   return (
@@ -18,6 +19,7 @@ function ProjectsInner() {
   const [projects, setProjects] = useState<any[]>([]);
   const [name, setName] = useState('');
   const nameRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => { if (!workspaceId) return; api.listProjects(workspaceId).then(setProjects).catch(()=>{}); }, [workspaceId]);
 
@@ -31,10 +33,9 @@ function ProjectsInner() {
   const tilesCount = 1 + projects.length; // new-project tile + project cards
   const listNav = useListNav(tilesCount, {
     onOpen: (i) => {
-      if (i === 0) {
-        // focus name input
-        nameRef.current?.focus();
-      }
+      if (i === 0) { nameRef.current?.focus(); return; }
+      const proj = projects[i-1];
+      if (proj) router.push(`/projects/${proj.id}`);
     },
     onNew: () => {
       nameRef.current?.focus();

@@ -80,9 +80,10 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (suspended) return;
-      // If help overlay open, only allow '?' to close it
+      // If help overlay open, accept '?' or Escape to close
       if (helpOpen) {
-        if (e.key === '?') { setHelpOpen(false); e.preventDefault(); }
+        if (e.key === '?' || e.key === 'Escape') { setHelpOpen(false); e.preventDefault(); }
+        else e.preventDefault();
         return;
       }
       if (isTypingTarget(e.target)) return;
@@ -158,7 +159,7 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("keydown", onKeyDown, { capture: true } as any);
       window.removeEventListener("blur", onBlur);
     };
-  }, [suspended]);
+  }, [suspended, helpOpen]);
 
   const value = useMemo(() => ({ registerScope, suspended, setSuspended, helpOpen, setHelpOpen }), [registerScope, suspended, helpOpen]);
 
