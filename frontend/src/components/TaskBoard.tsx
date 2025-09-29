@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import TagBadge from "@/components/TagBadge";
 import { formatDueLabel } from "@/components/TaskList";
+import { useGridNav } from "@/lib/keyboard/useGridNav";
 
 export type Task = {
   id: string;
@@ -78,13 +79,37 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
       return next;
     });
   };
+  const gridNav = useGridNav({
+    cols: order.length,
+    rowsByCol: (ci) => {
+      const id = order[ci];
+      return id ? sortTasksForColumn(id, columns[id].tasks).length : 0;
+    },
+  }, {
+    onOpen: ({ col, row }) => {
+      const id = order[col];
+      const items = id ? sortTasksForColumn(id, columns[id].tasks) : [];
+      const t = items[row]; if (t) onOpen?.(t);
+    },
+    onToggle: ({ col, row }) => {
+      const id = order[col];
+      const items = id ? sortTasksForColumn(id, columns[id].tasks) : [];
+      const t = items[row]; if (t) onToggleCompleted?.(t, !t.is_completed);
+    },
+    onNewInCol: (col) => {
+      const id = order[col];
+      const dest = id === unknownId ? null : id;
+      if (!newDisabled) onCreateInStatus?.(dest);
+    },
+  });
+
   return (
     // Wrap the board grid in a horizontal scroll container so that
     // wide boards scroll independently from the whole page. This keeps
     // list views unaffected and prevents body-level horizontal scroll.
-    <div className="overflow-x-auto overscroll-x-contain w-full">
+    <div className="overflow-x-auto overscroll-x-contain w-full" {...gridNav.getContainerProps()}>
       <div className="grid gap-3 w-max" style={{ gridTemplateColumns: `repeat(${order.length}, minmax(220px, 1fr))` }}>
-      {order.map((colId) => {
+      {order.map((colId, colIndex) => {
         const items = sortTasksForColumn(colId, columns[colId].tasks);
         const showColActive = dragOver?.colId === colId && dragOver?.pos === 'end';
         return (
@@ -151,6 +176,7 @@ export default function TaskBoard({ tasks, projectsById={}, statusesById={}, sta
                   }}
                   onOpen={()=>onOpen?.(t)}
                   onToggleCompleted={(n)=>onToggleCompleted?.(t, n)}
+                  extraKBProps={gridNav.getCardProps(colIndex, idx)}
                 />
               ))
             )}
@@ -215,7 +241,7 @@ function handleFor(u: User) {
   return `@${local}`;
 }
 
-function TaskCard({ task, project, tags, assignees, columnId, draggingId, dragOverInfo, onDragStart, onDragOverCard, onDropOnCard, onOpen, onToggleCompleted }:{ task: Task, project?: Project, tags?: Tag[], assignees?: User[], columnId: string, draggingId?: string|null, dragOverInfo?: { colId: string; targetId?: string; pos: 'before'|'after'|'end' } | null, onDragStart: (t: Task) => void, onDragOverCard: (targetId: string, pos: 'before'|'after') => void, onDropOnCard: (targetId: string, pos: 'before'|'after') => void, onOpen?: ()=>void, onToggleCompleted?: (next:boolean)=>void }){
+function TaskCard({ task, project, tags, assignees, columnId, draggingId, dragOverInfo, onDragStart, onDragOverCard, onDropOnCard, onOpen, onToggleCompleted, extraKBProps }:{ task: Task, project?: Project, tags?: Tag[], assignees?: User[], columnId: string, draggingId?: string|null, dragOverInfo?: { colId: string; targetId?: string; pos: 'before'|'after'|'end' } | null, onDragStart: (t: Task) => void, onDragOverCard: (targetId: string, pos: 'before'|'after') => void, onDropOnCard: (targetId: string, pos: 'before'|'after') => void, onOpen?: ()=>void, onToggleCompleted?: (next:boolean)=>void, extraKBProps?: any }){
   const isDragging = draggingId === task.id;
   const showBefore = dragOverInfo && dragOverInfo.colId === columnId && dragOverInfo.targetId === task.id && dragOverInfo.pos === 'before';
   const showAfter = dragOverInfo && dragOverInfo.colId === columnId && dragOverInfo.targetId === task.id && dragOverInfo.pos === 'after';
@@ -242,6 +268,7 @@ function TaskCard({ task, project, tags, assignees, columnId, draggingId, dragOv
         const pos = e.clientY < rect.top + rect.height/2 ? 'before' : 'after';
         onDropOnCard(task.id, pos);
       }}
+      {...extraKBProps}
     >
       <div className="flex items-start gap-2">
         <button

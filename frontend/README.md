@@ -43,3 +43,22 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - In Board view, drag tasks between columns to change their status. In All Tasks, dropping into another project's status moves the task to that project.
 - Use the `+` button in a column header to create a new task pre-set to that column's status.
  - Completing a task automatically moves it to the `Done` status for its project (or the default `Done` if the task has no project). Setting a task’s status to a `Done` column also marks it complete.
+
+## Keyboard Navigation
+
+- Global
+  - `g t` → All Tasks, `g p` → Projects, `g a` → Tags
+  - `?` → Toggle shortcuts overlay
+- All Tasks (List)
+  - Move: `j/k` or `↓/↑`, Top/Bottom: `gg` / `G`
+  - Open: `Enter` or `o`, Toggle complete: `x`, New: `n`
+  - Toggle List/Board: `v`
+- All Tasks (Board)
+  - Move: `h/j/k/l` or arrows, Top-left: `gg`, Bottom of column: `G`
+  - Open: `Enter` or `o`, Toggle complete: `x`, New in column: `n`
+- Projects
+  - Navigate tiles with `j/k` or arrows; `n` focuses the new project input
+- Tags
+  - Navigate rows with `j/k` or arrows; `Enter` edits the selected row; `n` starts creating
+
+Shortcuts automatically suspend while typing in inputs/textarea/select or when modals are open.

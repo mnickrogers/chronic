@@ -30,6 +30,19 @@ export default function TagPicker({ onSelect, onClose }:{ onSelect: (tag: Tag)=>
     return () => document.removeEventListener('mousedown', handler);
   }, [rootEl, onClose]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (editingId) { setEditingId(null); return; }
+      if (creating) { setCreating(false); setName(''); setColor('#6B7280'); return; }
+      onClose?.();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true } as any);
+  }, [editingId, creating, onClose]);
+
   const create = async () => {
     if (!workspaceId || !name.trim()) return;
     try { const t:any = await api.createTag(workspaceId, name.trim(), color); setTags(prev=>[...prev, t]); setName(''); setColor('#6B7280'); setCreating(false); }

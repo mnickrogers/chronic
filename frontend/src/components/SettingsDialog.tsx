@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/lib/session";
 import { api } from "@/lib/api";
 
@@ -8,15 +8,13 @@ type TabKey = "account" | "general";
 export default function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { session, refresh } = useSession();
   const [tab, setTab] = useState<TabKey>("account");
-  const initial = {
-    first: session?.user.first_name || "",
-    last: session?.user.last_name || "",
-    theme: (session?.user as any)?.theme || 'nord',
-  } as const;
+  const initialFirst = session?.user.first_name || "";
+  const initialLast = session?.user.last_name || "";
+  const initialTheme = (session?.user as any)?.theme || 'nord';
 
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
-  const [theme, setTheme] = useState<'nord'|'dust'|'forest'|'sunset'>(initial.theme);
+  const [theme, setTheme] = useState<'nord'|'dust'|'forest'|'sunset'>(initialTheme);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -24,13 +22,13 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
   useEffect(() => {
     if (open) {
       setTab("account");
-      setFirst(initial.first);
-      setLast(initial.last);
-      setTheme(initial.theme);
+      setFirst(initialFirst);
+      setLast(initialLast);
+      setTheme(initialTheme);
       setSaving(false);
       setErr(null);
     }
-  }, [open, initial.first, initial.last, initial.theme]);
+  }, [open, initialFirst, initialLast, initialTheme]);
 
   // Live preview theme while dialog is open
   useEffect(() => {
@@ -42,10 +40,34 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
     return () => { el.setAttribute('data-theme', (session?.user as any)?.theme || prev || 'nord'); };
   }, [theme, open, session?.user]);
 
+  const onCancel = useCallback(() => {
+    // Revert any edits and close
+    setFirst(initialFirst);
+    setLast(initialLast);
+    setTheme(initialTheme);
+    // Ensure preview reverts immediately
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    }
+    onClose();
+  }, [initialFirst, initialLast, initialTheme, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      onCancel();
+    };
+    window.addEventListener('keydown', handleKey, { capture: true });
+    return () => window.removeEventListener('keydown', handleKey, { capture: true } as any);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
-  const changedNames = first !== (session?.user.first_name || "") || last !== (session?.user.last_name || "");
-  const changedTheme = theme !== ((session?.user as any)?.theme || 'nord');
+  const changedNames = first !== initialFirst || last !== initialLast;
+  const changedTheme = theme !== initialTheme;
   const canSave = !saving && (changedNames || changedTheme) && (first.trim().length > 0 || !changedNames);
 
   const onSave = async () => {
@@ -64,18 +86,6 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
     } finally {
       setSaving(false);
     }
-  };
-
-  const onCancel = () => {
-    // Revert any edits and close
-    setFirst(initial.first);
-    setLast(initial.last);
-    setTheme(initial.theme);
-    // Ensure preview reverts immediately
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', initial.theme);
-    }
-    onClose();
   };
 
   return (

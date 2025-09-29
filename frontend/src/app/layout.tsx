@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
+import { KeyboardProvider } from "@/lib/keyboard/KeyboardProvider";
 import ThemeApplier from "@/lib/ThemeApplier";
 
 const ibmMono = IBM_Plex_Mono({ weight: ["300","400","500","600","700"], subsets: ["latin"], variable: "--font-ibm-plex-mono" });
@@ -17,8 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${ibmMono.variable} antialiased text-[#E6E6F0]`}>
         <SessionProvider>
-          <ThemeApplier />
-          {children}
+          <KeyboardProvider>
+            <ThemeApplier />
+            {children}
+          </KeyboardProvider>
         </SessionProvider>
       </body>
     </html>
