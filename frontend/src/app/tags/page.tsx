@@ -52,6 +52,21 @@ function TagsInner() {
     onNew: () => { setCreating(true); setTimeout(()=>createRef.current?.focus(), 0); },
   });
 
+  useEffect(() => {
+    if (!creating && !editingId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (editingId) { setEditingId(null); return; }
+      setCreating(false);
+      setName('');
+      setColor('#6B7280');
+    };
+    window.addEventListener('keydown', handler, { capture: true });
+    return () => window.removeEventListener('keydown', handler, { capture: true } as any);
+  }, [creating, editingId]);
+
   return (
     <div>
       <div className="mb-3 text-md">Tags</div>

@@ -178,7 +178,18 @@ export function useKeyboard() {
 }
 
 function KeyboardHelp({ onClose }: { onClose: () => void }) {
-  // Click outside or Esc handled by global key; we accept click backdrop to close
+  // Close on backdrop click or escape so the overlay always respects cancel shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true } as any);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20" onClick={onClose}>
       <div className="frame bg-[var(--bg-2)] w-full max-w-xl" onClick={(e)=>e.stopPropagation()}>

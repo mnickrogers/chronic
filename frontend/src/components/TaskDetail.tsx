@@ -93,9 +93,9 @@ export default function TaskDetail({ task, project, status, onClose, onChange, o
             return true;
           }
           if (idx === 4) {
-            if (input.key === 'o') { openNativeSelect(statusRef.current); evt.stopPropagation(); return true; }
-            statusRef.current?.focus();
             evt.stopPropagation();
+            if (input.key === 'o' || input.key === 'Enter') { openNativeSelect(statusRef.current); return true; }
+            statusRef.current?.focus();
             return false;
           }
         }
